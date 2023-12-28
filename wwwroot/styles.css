@@ -2,6 +2,7 @@
 	font-size: 1.2rem;
 	box-sizing: border-box;
 	font-family: "PT Sans", Arial, Helvetica, sans-serif;
+	text-decoration-skip-ink: none;
 }
 html {
 	height: 100%;
@@ -11,6 +12,7 @@ body {
 	margin: 0;
 	background-color: #1e1e1e;
 	overflow-y: overlay;
+	color: #d4d4d4;
 }
 canvas {
 	user-select: none;
@@ -25,9 +27,6 @@ canvas {
 #console * {
 	font-family: "PT Mono", Arial, Helvetica, sans-serif;
 }
-#console div {
-	color: white;
-}
 .text-error, #console .text-error {
 	color: tomato;
 }
@@ -40,7 +39,6 @@ canvas {
 	display: flex;
 	font-size: 0.45em;
 	background-color: tomato;
-	color: white;
 	border-radius: 50%;
 	width: 1.2em;
 	height: 1.3em;
@@ -60,8 +58,15 @@ canvas {
 .padding {
 	padding: 1em;
 }
-.container > * + * {
-	margin-left: 0.4em;
+.container {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4em;
+}
+.desc {
+	padding: 0.8em;
+	font-size: 0.8em;
 }
 
 ::-webkit-scrollbar {
@@ -81,6 +86,85 @@ canvas {
   background-color: rgba(136, 136, 136);
 	/* background: #555; */
 }
-.TextGameEngine-console span {
-  white-space: break-spaces;
+
+button, select {
+	color: inherit;
+	background-color: transparent;
+	border: 2px solid currentColor;
+	border-radius: 0.15em;
+	padding: 0em 0.4em;
+	height: 1.9em;
+	cursor: pointer;
+}
+button:hover {
+	text-decoration: underline;
+}
+
+input, option {
+	background-color: #1e1e1e;
+	color: #d4d4d4;
+}
+
+input {
+	border: 1px solid currentColor;
+	border-radius: 0.15em;
+}
+
+.inp-lr {
+	display: flex;
+}
+.inp-lr input {
+	width: 5em;
+}
+.inp-lr button {
+	padding: 0.1em 0.2em;
+}
+.inp-lr button:nth-child(2) {
+	margin-left: 0.2em;
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+}
+.inp-lr button:nth-child(3) {
+	margin-left: -2px;
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+
+input[type="checkbox"] {
+	appearance: none;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 1em;
+	height: 1em;
+}
+input[type="checkbox"]::before {
+	content: "";
+	width: 45%;
+	height: 45%;
+	border-radius: 20%;
+	background-color: #d4d4d4;
+	transform: scale(0) rotate(-45deg);
+	transition: transform 200ms;
+}
+input[type="checkbox"]:checked::before {
+	transform: scale(1) rotate(45deg);
+}
+
+.lbl-chbx {
+	display: flex;
+	gap: 0.2em;
+	user-select: none;
+}
+
+.inp-short {
+	width: 4em;
+}
+
+.hbr {
+	display: inline-block;
+	width: 2px;
+	background-color: currentColor;
+	height: 1.2em;
+	margin-inline: 0.5em;
 }

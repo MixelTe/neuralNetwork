@@ -1,6 +1,7 @@
 import * as Lib from "./littleLib.js";
 import { Network } from "./network.js";
 import { log, logError } from "./pageConsole.js";
+import { preset_lines, preset_waves } from "./presets.js";
 import { draw } from "./visualizer.js";
 
 const pixelSize = 15;
@@ -16,49 +17,98 @@ export function start()
 	const errorSpan = Lib.Span("text-error");
 	const trainSpan = Lib.Span("text-normal");
 	const speedSpan = Lib.Span();
+	const pointsDiv = Lib.Div(["padding", "container"]);
+	const slotInp = Lib.Input("inp-short", "text");
+	const presetSelect = createSelect(["lines", "waves", "zones", "circles"]);
+	const settingsDiv = Lib.Div(["padding", "container"]);
+	const funcSelect = createSelect(["sigmoid", "relu", "tanh", "linear"]);
+	const layersInp = Lib.Input([], "text");
+	const learnRateInp = Lib.Input([], "number");
+	const shiftingInp = Lib.Input([], "checkbox");
+	const statsDiv = Lib.Div(["padding", "container"]);
+	const lossSpan = Lib.Span("text-normal");
+	const accuracySpan = Lib.Span("text-normal");
+	const precisionSpan = Lib.Span("text-normal");
+	const recallSpan = Lib.Span("text-normal");
+	const f1Span = Lib.Span("text-normal");
 	canvasDiv.style.height = "100vh";
 	canvasDiv.style.overflow = "hidden";
 	body?.appendChild(canvasDiv);
 	canvasDiv.appendChild(canvas);
+	body?.appendChild(Lib.Div("desc", [], "LMB - add point, shift - green point, alt - blue point; RMB - remove point; shift+space = start/stop"));
 	body?.appendChild(controlsDiv);
+	body?.appendChild(pointsDiv);
+	body?.appendChild(settingsDiv);
+	body?.appendChild(statsDiv);
 
 	let trainCount = 0;
 	let trainCountPast = 0;
-	const ctx = Lib.canvas.getContext2d(canvas);
+	const ctx = Lib.canvas.getContext2d(canvas, true);
 	let points: Point[] = [];
 	let activePoint: Point | undefined = undefined;
 	let img: ImageData | null = null;
 	let running = false;
 	let showPoints = true;
+	let layers = [2, 5, 3, 3];
+	let last_pred: number[][] = [];
+	let last_answ: number[][] = [];
 
 	const network = new Network();
-	network.createNetwork([2, 5, 3, 3]);
+	network.createNetwork(layers);
 	draw(network);
 
-	addButton("start", controlsDiv, btn =>
+	function onStartBtn()
 	{
 		running = !running;
-		btn.innerText = running ? "Stop" : "Start";
+		startBtn.innerText = running ? "Stop" : "Start";
 		train();
-	});
-	addButton("train", controlsDiv, () =>
+	}
+	const startBtn = addButton("Start", controlsDiv, onStartBtn);
+	window.addEventListener("keypress", e =>
+	{
+		if (e.code == "Space" && e.shiftKey)
+		{
+			e.preventDefault();
+			onStartBtn();
+		}
+	})
+	addButton("Step", controlsDiv, () =>
 	{
 		trainOne();
 		drawAll();
 	});
-	addButton("savePoints", controlsDiv, () =>
+	addButton("Hide points", controlsDiv, btn =>
 	{
-		localStorage.setItem("network_ariaMarker-points", JSON.stringify(points));
-		log("Data saved!");
+		showPoints = !showPoints;
+		btn.innerText = showPoints ? "Hide points" : "Show points";
+		drawAll();
 	});
-	addButton("loadPoints", controlsDiv, () =>
+	addButton("Clear points", controlsDiv, btn =>
 	{
-		const v = localStorage.getItem("network_ariaMarker-points");
+		points = [];
+		activePoint = undefined;
+		drawAll();
+	});
+	controlsDiv.appendChild(errorSpan);
+	controlsDiv.appendChild(trainSpan);
+	controlsDiv.appendChild(speedSpan);
+
+	pointsDiv.appendChild(Lib.Span([], [], "Points: "));
+	addButton("Load", pointsDiv, () =>
+	{
+		const v = localStorage.getItem("network_ariaMarker-savedPoints");
 		if (!v) return log("No data to load");
 		try
 		{
-			const parsed = JSON.parse(v);
-			points = parsed;
+			const slot = slotInp.value;
+			const savedPoints = JSON.parse(v);
+			if (!savedPoints[slot])
+			{
+				logError(`Slot [${slot}] is empty`);
+				return;
+			}
+
+			points = savedPoints[slot] || [];
 			activePoint = points[0];
 			log("Data loaded!");
 			redrawPoints();
@@ -68,14 +118,96 @@ export function start()
 			logError(e);
 		}
 	});
-	addButton("Hide Points", controlsDiv, btn =>
+	addButton("Save", pointsDiv, () =>
 	{
-		showPoints = !showPoints;
-		btn.innerText = showPoints ? "Hide Points" : "Show Points";
+		const v = localStorage.getItem("network_ariaMarker-savedPoints");
+		const savedPoints = JSON.parse(v || "{}");
+		const slot = slotInp.value;
+		savedPoints[slot] = points;
+		localStorage.setItem("network_ariaMarker-savedPoints", JSON.stringify(savedPoints));
+		log(`Data saved to slot [${slot}]!`);
 	});
-	controlsDiv.appendChild(errorSpan);
-	controlsDiv.appendChild(trainSpan);
-	controlsDiv.appendChild(speedSpan);
+	pointsDiv.appendChild(Lib.Span([], [], "Slot: "));
+	pointsDiv.appendChild(slotInp);
+	slotInp.value = "0";
+
+	pointsDiv.appendChild(Lib.Span("hbr"));
+	pointsDiv.appendChild(Lib.Span([], [], "Presets: "));
+	pointsDiv.appendChild(presetSelect);
+	addButton("Load", pointsDiv, () =>
+	{
+		switch (presetSelect.value)
+		{
+			case "lines": points = preset_lines as Point[]; break;
+			case "waves": points = preset_waves as Point[]; break;
+		}
+		activePoint = points[0];
+		log(`Preset [${presetSelect.value}] loaded!`);
+		redrawPoints();
+	});
+
+	settingsDiv.appendChild(Lib.Span([], [], "Activation func: "));
+	settingsDiv.appendChild(funcSelect);
+	settingsDiv.appendChild(Lib.Span([], [], "Layers: "));
+	settingsDiv.appendChild(layersInp);
+	settingsDiv.appendChild(Lib.initEl("label", "lbl-chbx", [shiftingInp, Lib.Span([], [], "Shifting")], undefined));
+	settingsDiv.appendChild(Lib.Span([], [], "Learn rate: "));
+	settingsDiv.appendChild(Lib.Span("inp-lr", [
+		learnRateInp,
+		Lib.Button([], "×2", () => changeInpLr(2)),
+		Lib.Button([], "÷2", () => changeInpLr(0.5)),
+	]));
+	function changeInpLr(m: number)
+	{
+		network.learningCoefficient = Math.min(network.learningCoefficient * m, 0.8);
+		learnRateInp.value = `${network.learningCoefficient}`;
+	}
+
+	{
+		const lossLbl = Lib.Span([], [], "Loss: ")
+		lossLbl.title = "Cross-Entropy Loss";
+		statsDiv.appendChild(lossLbl);
+	}
+	statsDiv.appendChild(lossSpan);
+	statsDiv.appendChild(Lib.Span([], [], "Accuracy: "));
+	statsDiv.appendChild(accuracySpan);
+	statsDiv.appendChild(Lib.Span([], [], "Precision: "));
+	statsDiv.appendChild(precisionSpan);
+	statsDiv.appendChild(Lib.Span([], [], "Recall: "));
+	statsDiv.appendChild(recallSpan);
+	statsDiv.appendChild(Lib.Span([], [], "F1: "));
+	statsDiv.appendChild(f1Span);
+
+	funcSelect.addEventListener("change", () =>
+	{
+		network.Activator = funcSelect.value as any;
+		network.createNetwork(layers, shiftingInp.checked);
+		drawAll();
+	})
+
+	layersInp.addEventListener("change", () =>
+	{
+		const layersNew = layersInp.value.trim().split(" ").map(v => Math.abs(parseInt(v))).filter(v => !isNaN(v) && v > 0);
+		layers = [2, ...layersNew, 3];
+		layersInp.value = layers.slice(1, -1).join(" ");
+		network.createNetwork(layers, shiftingInp.checked);
+		trainCount = 0;
+		drawAll();
+	});
+	shiftingInp.addEventListener("change", () =>
+	{
+		network.createNetwork(layers, shiftingInp.checked);
+		trainCount = 0;
+		drawAll();
+	});
+
+	layersInp.value = "5 3";
+	shiftingInp.checked = true;
+	learnRateInp.min = "0";
+	learnRateInp.max = "1";
+	learnRateInp.step = "0.01";
+	learnRateInp.value = `${network.learningCoefficient}`;
+	learnRateInp.addEventListener("input", () => network.learningCoefficient = learnRateInp.valueAsNumber);
 
 	drawAll();
 
@@ -174,9 +306,9 @@ export function start()
 			for (let x = 0; x < canvas.width; x += pixelSize)
 			{
 				const res = network.calculate(normalize(x, y));
-				const r = res[0] * 255;
-				const g = res[1] * 255;
-				const b = res[2] * 255;
+				const r = minmax(0, res[0] * 255, 255);
+				const g = minmax(0, res[1] * 255, 255);
+				const b = minmax(0, res[2] * 255, 255);
 				ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
 				ctx.fillRect(x, y, pixelSize, pixelSize);
 			}
@@ -205,9 +337,10 @@ export function start()
 			time = t;
 			redraw = false;
 			drawAll();
-			if (trainSpan) trainSpan.innerText = `${trainCount}`;
-			if (errorSpan) errorSpan.innerText = error.toFixed(5);
-			if (speedSpan) speedSpan.innerText = `${Math.floor((trainCount - trainCountPast) / dt * 1000)}t/s`;
+			updateStats();
+			trainSpan.innerText = `${trainCount}`;
+			errorSpan.innerText = error.toFixed(8);
+			speedSpan.innerText = `${Math.floor((trainCount - trainCountPast) / dt * 1000)}e/s`;
 			trainCountPast = trainCount;
 			setTimeout(() => redraw = true, 100);
 		}
@@ -216,6 +349,8 @@ export function start()
 	function trainOne()
 	{
 		let error = 0;
+		last_pred = [];
+		last_answ = [];
 		points.forEach(point =>
 		{
 			if (movePoints)
@@ -233,9 +368,11 @@ export function start()
 			const r3 = point.color == "blue" ? 1 : 0;
 			try
 			{
-				const e = network.train([point.x, point.y], [r1, r2, r3]);
+				const ans = [r1, r2, r3];
+				const { e, r } = network.train([point.x, point.y], ans);
+				last_pred.push(r);
+				last_answ.push(ans);
 				error += e * e;
-				trainCount++;
 			}
 			catch (e)
 			{
@@ -243,7 +380,42 @@ export function start()
 				console.error(e);
 			}
 		});
+		trainCount++;
 		return error;
+	}
+	function updateStats()
+	{
+		if (last_answ.length == 0) return;
+		const indexes = (len: number) => new Array(len).fill(0).map((_, i) => i);
+		const indexOfMax = (nums: number[]) => nums.indexOf(Math.max(...nums));
+		const sum = (nums: (number | boolean)[]) => nums.reduce<number>((c, v) => c + (typeof v == "boolean" ? (v ? 1 : 0) : v), 0);
+
+		const loss = -last_pred.reduce((V, P, I) => V + softmax(P).reduce((v, p, i) => v + last_answ[I][i] * Math.log(p), 0), 0);
+		lossSpan.innerText = loss.toFixed(3);
+
+		const preds = last_pred.map(p => indexOfMax(p));
+		const ans = last_answ.map(p => indexOfMax(p));
+
+		const accuracy = preds.filter((v, i) => v == ans[i]).length / last_pred.length;
+		accuracySpan.innerText = accuracy.toFixed(3);
+
+		const classes = last_answ[0].length;
+		const TP = indexes(classes).map(I => sum(ans.map((a, i) => a == I && preds[i] == I)));
+		const TN = indexes(classes).map(I => sum(ans.map((a, i) => a != I && preds[i] != I)));
+		const FP = indexes(classes).map(I => sum(ans.map((a, i) => a != I && preds[i] == I)));
+		const FN = indexes(classes).map(I => sum(ans.map((a, i) => a == I && preds[i] != I)));
+
+		const precision = indexes(classes).map(i => TP[i] == 0 ? 0 : (TP[i] / (TP[i] + FP[i])));
+		const precisionMean = sum(precision) / precision.length;
+		precisionSpan.innerText = precisionMean.toFixed(3);
+
+		const recall = indexes(classes).map(i => TP[i] == 0 ? 0 : (TP[i] / (TP[i] + FN[i])));
+		const recallMean = sum(recall) / recall.length;
+		recallSpan.innerText = recallMean.toFixed(3);
+
+		const f1 = indexes(classes).map(i => (precision[i] == 0 || recall[i] == 0) ? 0 : ((2 * precision[i] * recall[i]) / (precision[i] + recall[i])));
+		const f1Mean = sum(f1) / f1.length;
+		f1Span.innerText = f1Mean.toFixed(3);
 	}
 	function s(x: number)
 	{
@@ -253,6 +425,19 @@ export function start()
 	{
 		return [x / canvas.width, y / canvas.height];
 	}
+	function softmax(preds: number[])
+	{
+		const d = sum(preds.map(v => Math.exp(v)));
+		return preds.map(v => Math.exp(v) / d);
+	};
+	function sum(nums: (number | boolean)[])
+	{
+		return nums.reduce<number>((c, v) => c + (typeof v == "boolean" ? (v ? 1 : 0) : v), 0);
+	}
+	function minmax(min: number, v: number, max: number)
+	{
+		return Math.min(Math.max(min, v), max);
+	}
 	function addButton(text: string, parent: HTMLElement, onclick: (btn: HTMLButtonElement) => void)
 	{
 		const button = document.createElement("button");
@@ -260,6 +445,18 @@ export function start()
 		button.addEventListener("click", onclick.bind(button, button));
 		parent.appendChild(button);
 		return button;
+	}
+	function createSelect(options: string[])
+	{
+		const select = document.createElement("select");
+		for (const option of options)
+		{
+			const el = document.createElement("option");
+			el.value = option;
+			el.innerText = option;
+			select.appendChild(el);
+		}
+		return select
 	}
 }
 

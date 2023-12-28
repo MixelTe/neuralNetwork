@@ -61,9 +61,9 @@ function getInput(id: string)
 
 
 //canvas
-function getCanvasContext(canvas: HTMLCanvasElement)
+function getCanvasContext(canvas: HTMLCanvasElement, willReadFrequently = false)
 {
-	const ctx = canvas.getContext("2d");
+	const ctx = canvas.getContext("2d", {willReadFrequently});
 	if (ctx == null) throw new Error(`Context is null`);
 	return ctx;
 }
@@ -494,7 +494,7 @@ export function Button(classes?: string[] | string, innerText?: string, clickLis
 	return button;
 }
 
-function initEl<K extends keyof HTMLElementTagNameMap>(tagName: K, classes: string[] | string | undefined, children: HTMLElement[] | undefined, innerText: string | undefined)
+export function initEl<K extends keyof HTMLElementTagNameMap>(tagName: K, classes: string[] | string | undefined, children: HTMLElement[] | undefined, innerText: string | undefined)
 {
 	const el = document.createElement(tagName);
 	if (classes)

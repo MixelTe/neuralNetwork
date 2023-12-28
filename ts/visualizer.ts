@@ -4,6 +4,12 @@ import { log } from "./pageConsole.js";
 
 const canvas = Lib.get.canvas("visualizer");
 const ctx = Lib.canvas.getContext2d(canvas);
+const chb = Lib.get.input("visualizer-chb");
+chb.checked = true;
+chb.addEventListener("change", () =>
+{
+	canvas.style.display = canvas.style.display == "none" ? "" : "none";
+})
 
 const nodeSize = 45;
 // const spaceH = 140;
@@ -11,8 +17,19 @@ const nodeSize = 45;
 const spaceH = nodeSize * 2.9;
 const spaceV = nodeSize * 1.6;
 
+const colors = {
+	connection: "grey",
+	outline: "black",
+	node: "wheat",
+	value: "black",
+	error: "tomato",
+	weight: "wheat",
+	weightOutline: "black",
+}
+
 export function draw(network: Network)
 {
+	if (!chb.checked) return;
 	canvas.width = network.neurons.length * (nodeSize + spaceH);
 	let maxNodes = 0;
 	network.neurons.forEach(layer => maxNodes = Math.max(maxNodes, layer.length));
@@ -20,7 +37,7 @@ export function draw(network: Network)
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 
 	ctx.font = `${nodeSize / 5 * 2}px Arial`;
-	ctx.strokeStyle = "gray";
+	ctx.strokeStyle = colors.connection;
 	ctx.lineWidth = 3;
 	for (let j = 0; j < network.connections.length; j++)
 	{
@@ -42,7 +59,7 @@ export function draw(network: Network)
 
 	const fontSize = nodeSize / 5 * 2.5;
 	ctx.font = `${fontSize}px Arial`;
-	ctx.strokeStyle = "black";
+	ctx.strokeStyle = colors.outline;
 	ctx.lineWidth = 1;
 	for (let x = 0; x < network.neurons.length; x++)
 	{
@@ -50,24 +67,24 @@ export function draw(network: Network)
 		for (let y = 0; y < layer.length; y++) {
 			const node = layer[y];
 			const [X, Y] = calcXY(x, y, layer.length, maxNodes);
-			ctx.fillStyle = "wheat";
+			ctx.fillStyle = colors.node;
 			ctx.beginPath();
 			ctx.arc(X, Y, nodeSize, 0, Math.PI * 2);
 			ctx.fill();
 			ctx.stroke();
 			const offset = x == 0 ? 0 : fontSize / 2;
-			ctx.fillStyle = "black";
+			ctx.fillStyle = colors.value;
 			ctx.fillText(node.value.toFixed(4), X - fontSize * 1.5, Y + fontSize / 3 - offset);
 			if (x != 0)
 			{
-				ctx.fillStyle = "tomato";
+				ctx.fillStyle = colors.error;
 				ctx.fillText(node.error.toFixed(4), X - fontSize * 1.5, Y + fontSize / 3 + offset);
 			}
 		}
 	}
 
-	ctx.strokeStyle = "black";
-	ctx.fillStyle = "wheat";
+	ctx.strokeStyle = colors.weightOutline;
+	ctx.fillStyle = colors.weight;
 	ctx.lineWidth = 0.5;
 	for (let j = 0; j < network.connections.length; j++)
 	{

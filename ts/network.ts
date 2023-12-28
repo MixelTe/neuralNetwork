@@ -35,7 +35,7 @@ export class Network
 		}
 	}
 
-	public learningCoefficient = 0.2;
+	public learningCoefficient = 0.05;
 
 	public neurons: Neuron[][] = [];
 	public connections: Connections[] = [];
@@ -65,9 +65,19 @@ export class Network
 				if (i == 0) continue;
 				this.connections[ci][j] = [];
 				if (j == count) continue;
+
+				const prevNodesCount = neuronsCount[i - 1];
+				const nextNodesCount = count;
+				const std = Math.sqrt(2.0 / prevNodesCount);
+				const upper = (Math.sqrt(6.0) / Math.sqrt(prevNodesCount + nextNodesCount))
+				const lower = -upper;
 				for (let o = 0; o < this.neurons[i - 1].length; o++)
 				{
-					this.connections[ci][j][o] = Math.random() % 0.5 + 0.25;
+					if (this.Activator == "relu")
+						this.connections[ci][j][o] = Math.random() * std;
+					else
+						this.connections[ci][j][o] = lower + Math.random() * (upper - lower);
+					// this.connections[ci][j][o] = Math.random() % 0.5 + 0.25;
 					// this.connections[ci][j][o] = 0.2;
 				}
 			}
@@ -131,7 +141,7 @@ export class Network
 			const connections = this.connections[i];
 			findError(this.neurons[i], connections, this.neurons[i + 1]);
 		}
-		return error;
+		return error / r.length;
 	}
 	public train(input: number[], expectedResult: number[])
 	{
@@ -155,6 +165,6 @@ export class Network
 			const connections = this.connections[i];
 			backwards(this.neurons[i], connections, this.neurons[i + 1], this.learningCoefficient, this.activatorD);
 		}
-		return error;
+		return { e: error / r.length, r };
 	}
 }
