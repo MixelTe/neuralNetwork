@@ -203,7 +203,7 @@ export function start()
 	addButton("Load suitable model", presetDiv, () =>
 	{
 		const preset = presets_model[presetSelect.value as keyof typeof presets_model];
-		loadModel(preset);
+		loadModel(JSON.parse(JSON.stringify(preset)));
 		log(`Model preset [${presetSelect.value}] loaded!`);
 		setVisualizerVisible(false);
 		drawAll();
@@ -499,7 +499,7 @@ export function start()
 		const indexOfMax = (nums: number[]) => nums.indexOf(Math.max(...nums));
 		const sum = (nums: (number | boolean)[]) => nums.reduce<number>((c, v) => c + (typeof v == "boolean" ? (v ? 1 : 0) : v), 0);
 
-		const loss = -last_pred.reduce((V, P, I) => V + softmax(P).reduce((v, p, i) => v + last_answ[I][i] * Math.log(p), 0), 0);
+		const loss = -last_pred.reduce((V, P, I) => V + softmax(P).reduce((v, p, i) => v + last_answ[I][i] * Math.log(p), 0), 0) / last_pred.length;
 		lossSpan.innerText = loss.toFixed(3);
 
 		const preds = last_pred.map(p => indexOfMax(p));
@@ -536,8 +536,9 @@ export function start()
 	}
 	function softmax(preds: number[])
 	{
-		const d = sum(preds.map(v => Math.exp(v)));
-		return preds.map(v => Math.exp(v) / d);
+		const exp = preds.map(v => Math.exp(v * 10));
+		const d = sum(exp);
+		return exp.map(v => v / d);
 	};
 	function sum(nums: (number | boolean)[])
 	{
