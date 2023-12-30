@@ -1,10 +1,10 @@
 import * as Lib from "./littleLib.js";
 import { Network } from "./network.js";
 import { log, logError } from "./pageConsole.js";
-import { preset_lines, preset_waves } from "./presets.js";
-import { draw } from "./visualizer.js";
+import { preset_circles, preset_lines, preset_waves, preset_zones, presets_model } from "./presets.js";
+import { draw, setVisualizerVisible } from "./visualizer.js";
 
-const pixelSize = 15;
+const pixelSize = 16;
 const pointSize = 7;
 const movePoints = false;
 
@@ -19,6 +19,7 @@ export function start()
 	const speedSpan = Lib.Span();
 	const pointsDiv = Lib.Div(["padding", "container"]);
 	const slotInp = Lib.Input("inp-short", "text");
+	const presetDiv = Lib.Div(["padding", "container", "container-outlined"]);
 	const presetSelect = createSelect(["lines", "waves", "zones", "circles"]);
 	const settingsDiv = Lib.Div(["padding", "container"]);
 	const funcSelect = createSelect(["sigmoid", "relu", "tanh", "linear"]);
@@ -40,6 +41,7 @@ export function start()
 	body?.appendChild(pointsDiv);
 	body?.appendChild(settingsDiv);
 	body?.appendChild(statsDiv);
+	body?.appendChild(presetDiv);
 
 	let trainCount = 0;
 	let trainCountPast = 0;
@@ -83,10 +85,15 @@ export function start()
 		btn.innerText = showPoints ? "Hide points" : "Show points";
 		drawAll();
 	});
-	addButton("Clear points", controlsDiv, btn =>
+	addButton("Clear points", controlsDiv, () =>
 	{
 		points = [];
 		activePoint = undefined;
+		drawAll();
+	});
+	addButton("Reset model", controlsDiv, () =>
+	{
+		network.createNetwork(layers, shiftingInp.checked);
 		drawAll();
 	});
 	controlsDiv.appendChild(errorSpan);
@@ -110,7 +117,7 @@ export function start()
 
 			points = savedPoints[slot] || [];
 			activePoint = points[0];
-			log("Data loaded!");
+			log("Points data loaded!");
 			redrawPoints();
 		}
 		catch (e)
@@ -125,25 +132,46 @@ export function start()
 		const slot = slotInp.value;
 		savedPoints[slot] = points;
 		localStorage.setItem("network_ariaMarker-savedPoints", JSON.stringify(savedPoints));
-		log(`Data saved to slot [${slot}]!`);
+		log(`Points data saved to slot [${slot}]!`);
 	});
 	pointsDiv.appendChild(Lib.Span([], [], "Slot: "));
 	pointsDiv.appendChild(slotInp);
 	slotInp.value = "0";
 
-	pointsDiv.appendChild(Lib.Span("hbr"));
-	pointsDiv.appendChild(Lib.Span([], [], "Presets: "));
-	pointsDiv.appendChild(presetSelect);
-	addButton("Load", pointsDiv, () =>
+	// pointsDiv.appendChild(Lib.Span("hbr"));
+	presetDiv.appendChild(Lib.Span("container-outlined-lbl", [], "For lazy :)"));
+	presetDiv.appendChild(Lib.Span([], [], "Presets: "));
+	presetDiv.appendChild(presetSelect);
+	addButton("Load points", presetDiv, () =>
 	{
 		switch (presetSelect.value)
 		{
 			case "lines": points = preset_lines as Point[]; break;
 			case "waves": points = preset_waves as Point[]; break;
+			case "zones": points = preset_zones as Point[]; break;
+			case "circles": points = preset_circles as Point[]; break;
 		}
 		activePoint = points[0];
-		log(`Preset [${presetSelect.value}] loaded!`);
+		log(`Points preset [${presetSelect.value}] loaded!`);
 		redrawPoints();
+	});
+	addButton("Load suitable model", presetDiv, () =>
+	{
+		const preset = presets_model[presetSelect.value as keyof typeof presets_model];
+		network.Activator = preset.fn as any;
+		network.learningCoefficient = preset.lr;
+		layers = [2, ...preset.layers, 3];
+		network.createNetwork(layers, preset.sh);
+
+		funcSelect.value = preset.fn;
+		layersInp.value = preset.layers.join(" ");
+		shiftingInp.checked = preset.sh;
+		learnRateInp.value = `${preset.lr}`;
+
+		trainCount = 0;
+		log(`Model preset [${presetSelect.value}] loaded!`);
+		setVisualizerVisible(false);
+		drawAll();
 	});
 
 	settingsDiv.appendChild(Lib.Span([], [], "Activation func: "));
@@ -192,6 +220,8 @@ export function start()
 		layersInp.value = layers.slice(1, -1).join(" ");
 		network.createNetwork(layers, shiftingInp.checked);
 		trainCount = 0;
+		if (layers.reduce((p, v) => p + v) > 32)
+			setVisualizerVisible(false);
 		drawAll();
 	});
 	shiftingInp.addEventListener("change", () =>
@@ -208,6 +238,15 @@ export function start()
 	learnRateInp.step = "0.01";
 	learnRateInp.value = `${network.learningCoefficient}`;
 	learnRateInp.addEventListener("input", () => network.learningCoefficient = learnRateInp.valueAsNumber);
+
+	const visualizerDiv = Lib.get.div("visualizer-controls");
+	visualizerDiv.prepend(Lib.Button([], "Draw high quality", () =>
+	{
+		window.scrollTo(0, 0);
+		// async + loader
+		drawAll(true);
+	}))
+	// model saving
 
 	drawAll();
 
@@ -264,10 +303,10 @@ export function start()
 		}
 	});
 
-	function drawAll()
+	function drawAll(hq = false)
 	{
 		clearCanvas();
-		drawBack();
+		drawBack(hq);
 		img = ctx.getImageData(0, 0, canvas.width, canvas.height);
 		if (showPoints) drawPoints();
 		drawNetwork()
@@ -299,18 +338,19 @@ export function start()
 			ctx.stroke();
 		}
 	}
-	function drawBack()
+	function drawBack(hq = false)
 	{
-		for (let y = 0; y < canvas.height; y += pixelSize)
+		const ps = hq ? 1 : pixelSize;
+		for (let y = 0; y < canvas.height; y += ps)
 		{
-			for (let x = 0; x < canvas.width; x += pixelSize)
+			for (let x = 0; x < canvas.width; x += ps)
 			{
 				const res = network.calculate(normalize(x, y));
 				const r = minmax(0, res[0] * 255, 255);
 				const g = minmax(0, res[1] * 255, 255);
 				const b = minmax(0, res[2] * 255, 255);
 				ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-				ctx.fillRect(x, y, pixelSize, pixelSize);
+				ctx.fillRect(x, y, ps, ps);
 			}
 		}
 	}

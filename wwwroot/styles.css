@@ -64,6 +64,26 @@ canvas {
 	align-items: center;
 	gap: 0.4em;
 }
+.container-outlined {
+	position: relative;
+	border: 1px solid #d4d4d477;
+	width: fit-content;
+	margin-left: 0.3em;
+	border-radius: 0.4em;
+	margin-top: 0.4em;
+}
+.container-outlined.padding {
+	padding-left: 0.7em;
+	padding-right: 0.7em;
+}
+.container-outlined-lbl {
+	position: absolute;
+	top: -0.8em;
+	left: 1em;
+	background-color: #1e1e1e;
+	padding-inline: 0.2em;
+	font-size: 0.8em;
+}
 .desc {
 	padding: 0.8em;
 	font-size: 0.8em;
@@ -114,7 +134,7 @@ input {
 	display: flex;
 }
 .inp-lr input {
-	width: 5em;
+	width: 9em;
 }
 .inp-lr button {
 	padding: 0.1em 0.2em;

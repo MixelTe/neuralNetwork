@@ -4,12 +4,17 @@ import { log } from "./pageConsole.js";
 
 const canvas = Lib.get.canvas("visualizer");
 const ctx = Lib.canvas.getContext2d(canvas);
-const chb = Lib.get.input("visualizer-chb");
+const chbDiv = Lib.get.div("visualizer-controls");
+const chb = Lib.Input([], "checkbox");
 chb.checked = true;
 chb.addEventListener("change", () =>
 {
-	canvas.style.display = canvas.style.display == "none" ? "" : "none";
+	canvas.style.display = chb.checked ? "" : "none";
 })
+chbDiv.appendChild(Lib.initEl("label", "lbl-chbx", [
+	chb,
+	Lib.Span([], [], "Visualizer"),
+], undefined))
 
 const nodeSize = 45;
 // const spaceH = 140;
@@ -25,6 +30,12 @@ const colors = {
 	error: "tomato",
 	weight: "wheat",
 	weightOutline: "black",
+}
+
+export function setVisualizerVisible(visible: boolean)
+{
+	chb.checked = visible;
+	canvas.style.display = visible ? "" : "none";
 }
 
 export function draw(network: Network)
@@ -64,7 +75,8 @@ export function draw(network: Network)
 	for (let x = 0; x < network.neurons.length; x++)
 	{
 		const layer = network.neurons[x];
-		for (let y = 0; y < layer.length; y++) {
+		for (let y = 0; y < layer.length; y++)
+		{
 			const node = layer[y];
 			const [X, Y] = calcXY(x, y, layer.length, maxNodes);
 			ctx.fillStyle = colors.node;
