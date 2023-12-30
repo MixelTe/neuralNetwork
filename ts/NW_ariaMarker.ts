@@ -13,12 +13,13 @@ export function start()
 	const body = document.getElementById("network");
 	const canvasDiv = Lib.Div();
 	const canvas = document.createElement("canvas");
+	const loader = Lib.get.div("loader");
 	const controlsDiv = Lib.Div(["padding", "container"]);
 	const errorSpan = Lib.Span("text-error");
 	const trainSpan = Lib.Span("text-normal");
 	const speedSpan = Lib.Span();
-	const pointsDiv = Lib.Div(["padding", "container"]);
-	const slotInp = Lib.Input("inp-short", "text");
+	const saveDiv = Lib.Div(["padding", "container", "container-outlined"]);
+	const slotPInp = Lib.Input("inp-short", "text");
 	const presetDiv = Lib.Div(["padding", "container", "container-outlined"]);
 	const presetSelect = createSelect(["lines", "waves", "zones", "circles"]);
 	const settingsDiv = Lib.Div(["padding", "container"]);
@@ -26,6 +27,7 @@ export function start()
 	const layersInp = Lib.Input([], "text");
 	const learnRateInp = Lib.Input([], "number");
 	const shiftingInp = Lib.Input([], "checkbox");
+	const slotMInp = Lib.Input("inp-short", "text");
 	const statsDiv = Lib.Div(["padding", "container"]);
 	const lossSpan = Lib.Span("text-normal");
 	const accuracySpan = Lib.Span("text-normal");
@@ -38,7 +40,7 @@ export function start()
 	canvasDiv.appendChild(canvas);
 	body?.appendChild(Lib.Div("desc", [], "LMB - add point, shift - green point, alt - blue point; RMB - remove point; shift+space = start/stop"));
 	body?.appendChild(controlsDiv);
-	body?.appendChild(pointsDiv);
+	body?.appendChild(saveDiv);
 	body?.appendChild(settingsDiv);
 	body?.appendChild(statsDiv);
 	body?.appendChild(presetDiv);
@@ -63,6 +65,7 @@ export function start()
 	{
 		running = !running;
 		startBtn.innerText = running ? "Stop" : "Start";
+		log(running ? "Start training" : "Stop training");
 		train();
 	}
 	const startBtn = addButton("Start", controlsDiv, onStartBtn);
@@ -76,6 +79,7 @@ export function start()
 	})
 	addButton("Step", controlsDiv, () =>
 	{
+		log("Train one epoch");
 		trainOne();
 		drawAll();
 	});
@@ -83,16 +87,18 @@ export function start()
 	{
 		showPoints = !showPoints;
 		btn.innerText = showPoints ? "Hide points" : "Show points";
-		drawAll();
+		redrawPoints();
 	});
 	addButton("Clear points", controlsDiv, () =>
 	{
+		log("Points cleared");
 		points = [];
 		activePoint = undefined;
 		drawAll();
 	});
 	addButton("Reset model", controlsDiv, () =>
 	{
+		log("Model reseted");
 		network.createNetwork(layers, shiftingInp.checked);
 		drawAll();
 	});
@@ -100,24 +106,22 @@ export function start()
 	controlsDiv.appendChild(trainSpan);
 	controlsDiv.appendChild(speedSpan);
 
-	pointsDiv.appendChild(Lib.Span([], [], "Points: "));
-	addButton("Load", pointsDiv, () =>
+	saveDiv.appendChild(Lib.Span("container-outlined-lbl", [], "Save values"));
+	saveDiv.appendChild(Lib.Span([], [], "Points: "));
+	addButton("Load", saveDiv, () =>
 	{
 		const v = localStorage.getItem("network_ariaMarker-savedPoints");
-		if (!v) return log("No data to load");
+		if (!v) return log("No model data to load");
 		try
 		{
-			const slot = slotInp.value;
+			const slot = slotPInp.value;
 			const savedPoints = JSON.parse(v);
 			if (!savedPoints[slot])
-			{
-				logError(`Slot [${slot}] is empty`);
-				return;
-			}
+				return logError(`Points slot [${slot}] is empty`);
 
 			points = savedPoints[slot] || [];
 			activePoint = points[0];
-			log("Points data loaded!");
+			log(`Points data loaded from slot [${slot}]!`);
 			redrawPoints();
 		}
 		catch (e)
@@ -125,20 +129,61 @@ export function start()
 			logError(e);
 		}
 	});
-	addButton("Save", pointsDiv, () =>
+	addButton("Save", saveDiv, () =>
 	{
 		const v = localStorage.getItem("network_ariaMarker-savedPoints");
 		const savedPoints = JSON.parse(v || "{}");
-		const slot = slotInp.value;
+		const slot = slotPInp.value;
 		savedPoints[slot] = points;
 		localStorage.setItem("network_ariaMarker-savedPoints", JSON.stringify(savedPoints));
 		log(`Points data saved to slot [${slot}]!`);
 	});
-	pointsDiv.appendChild(Lib.Span([], [], "Slot: "));
-	pointsDiv.appendChild(slotInp);
-	slotInp.value = "0";
+	saveDiv.appendChild(Lib.Span([], [], "Slot: "));
+	saveDiv.appendChild(slotPInp);
+	slotPInp.value = "0";
 
-	// pointsDiv.appendChild(Lib.Span("hbr"));
+	saveDiv.appendChild(Lib.Span("hbr"));
+	saveDiv.appendChild(Lib.Span([], [], "Model: "));
+	addButton("Load", saveDiv, () =>
+	{
+		const v = localStorage.getItem("network_ariaMarker-savedModels");
+		if (!v) return log("No model data to load");
+		try
+		{
+			const slot = slotMInp.value;
+			const savedModels = JSON.parse(v);
+			if (!savedModels[slot])
+				return logError(`Model slot [${slot}] is empty`);
+
+			const data = savedModels[slot] as ModelSave;
+			loadModel(data);
+			log(`Model data loaded from slot [${slot}]!`);
+			redrawPoints();
+		}
+		catch (e)
+		{
+			logError(e);
+		}
+	});
+	addButton("Save", saveDiv, () =>
+	{
+		const v = localStorage.getItem("network_ariaMarker-savedModels");
+		const savedModels = JSON.parse(v || "{}");
+		const slot = slotMInp.value;
+		const data: ModelSave = {
+			layers: layers.slice(1, -1),
+			fn: network.Activator,
+			sh: shiftingInp.checked,
+			lr: network.learningCoefficient,
+		};
+		savedModels[slot] = data;
+		localStorage.setItem("network_ariaMarker-savedModels", JSON.stringify(savedModels));
+		log(`Model data saved to slot [${slot}]!`);
+	});
+	saveDiv.appendChild(Lib.Span([], [], "Slot: "));
+	saveDiv.appendChild(slotMInp);
+	slotMInp.value = "0";
+
 	presetDiv.appendChild(Lib.Span("container-outlined-lbl", [], "For lazy :)"));
 	presetDiv.appendChild(Lib.Span([], [], "Presets: "));
 	presetDiv.appendChild(presetSelect);
@@ -158,21 +203,25 @@ export function start()
 	addButton("Load suitable model", presetDiv, () =>
 	{
 		const preset = presets_model[presetSelect.value as keyof typeof presets_model];
-		network.Activator = preset.fn as any;
-		network.learningCoefficient = preset.lr;
-		layers = [2, ...preset.layers, 3];
-		network.createNetwork(layers, preset.sh);
-
-		funcSelect.value = preset.fn;
-		layersInp.value = preset.layers.join(" ");
-		shiftingInp.checked = preset.sh;
-		learnRateInp.value = `${preset.lr}`;
-
-		trainCount = 0;
+		loadModel(preset);
 		log(`Model preset [${presetSelect.value}] loaded!`);
 		setVisualizerVisible(false);
 		drawAll();
 	});
+	function loadModel(modeSave: ModelSave)
+	{
+		network.Activator = modeSave.fn as any;
+		network.learningCoefficient = modeSave.lr;
+		layers = [2, ...modeSave.layers, 3];
+		network.createNetwork(layers, modeSave.sh);
+
+		funcSelect.value = modeSave.fn;
+		layersInp.value = modeSave.layers.join(" ");
+		shiftingInp.checked = modeSave.sh;
+		learnRateInp.value = `${modeSave.lr}`;
+
+		trainCount = 0;
+	}
 
 	settingsDiv.appendChild(Lib.Span([], [], "Activation func: "));
 	settingsDiv.appendChild(funcSelect);
@@ -196,6 +245,7 @@ export function start()
 		lossLbl.title = "Cross-Entropy Loss";
 		statsDiv.appendChild(lossLbl);
 	}
+
 	statsDiv.appendChild(lossSpan);
 	statsDiv.appendChild(Lib.Span([], [], "Accuracy: "));
 	statsDiv.appendChild(accuracySpan);
@@ -210,8 +260,11 @@ export function start()
 	{
 		network.Activator = funcSelect.value as any;
 		network.createNetwork(layers, shiftingInp.checked);
+		log(`Activation function changed to ${funcSelect.value}`);
 		drawAll();
-	})
+	});
+	funcSelect.value = network.Activator;
+	console.log(network.Activator);
 
 	layersInp.addEventListener("change", () =>
 	{
@@ -222,12 +275,14 @@ export function start()
 		trainCount = 0;
 		if (layers.reduce((p, v) => p + v) > 32)
 			setVisualizerVisible(false);
+		log(`Layers changed to ${layersInp.value}`);
 		drawAll();
 	});
 	shiftingInp.addEventListener("change", () =>
 	{
 		network.createNetwork(layers, shiftingInp.checked);
 		trainCount = 0;
+		log(shiftingInp.checked ? "Shifting enabled" : "Shifting disabled");
 		drawAll();
 	});
 
@@ -240,13 +295,22 @@ export function start()
 	learnRateInp.addEventListener("input", () => network.learningCoefficient = learnRateInp.valueAsNumber);
 
 	const visualizerDiv = Lib.get.div("visualizer-controls");
-	visualizerDiv.prepend(Lib.Button([], "Draw high quality", () =>
+	visualizerDiv.prepend(Lib.Button([], "Save image", async () =>
 	{
-		window.scrollTo(0, 0);
-		// async + loader
-		drawAll(true);
+		const fname = `NeuralNetwork-${funcSelect.value}-${layers.slice(1, -1).join("_")}${shiftingInp.checked ? "-sh" : ""}-lr_${learnRateInp.valueAsNumber}.png`
+		Lib.canvas.saveAsPng(canvas, fname);
+		log(`Canvas image saved as ${fname}`);
 	}))
-	// model saving
+	visualizerDiv.prepend(Lib.Button([], "Draw high quality", async () =>
+	{
+		log("Start high quality drawing")
+		window.scrollTo(0, 0);
+		showLoader();
+		await Lib.wait(1);
+		await drawAll(true);
+		hideLoader();
+		log("End high quality drawing")
+	}))
 
 	drawAll();
 
@@ -303,10 +367,10 @@ export function start()
 		}
 	});
 
-	function drawAll(hq = false)
+	async function drawAll(hq = false)
 	{
 		clearCanvas();
-		drawBack(hq);
+		await drawBack(hq);
 		img = ctx.getImageData(0, 0, canvas.width, canvas.height);
 		if (showPoints) drawPoints();
 		drawNetwork()
@@ -321,7 +385,7 @@ export function start()
 	{
 		clearCanvas();
 		if (img) ctx.putImageData(img, 0, 0);
-		drawPoints();
+		if (showPoints) drawPoints();
 	}
 	function drawPoints()
 	{
@@ -338,7 +402,7 @@ export function start()
 			ctx.stroke();
 		}
 	}
-	function drawBack(hq = false)
+	async function drawBack(hq = false)
 	{
 		const ps = hq ? 1 : pixelSize;
 		for (let y = 0; y < canvas.height; y += ps)
@@ -351,6 +415,11 @@ export function start()
 				const b = minmax(0, res[2] * 255, 255);
 				ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
 				ctx.fillRect(x, y, ps, ps);
+			}
+			if (hq && y % 5 == 0)
+			{
+				setLoader((y + 1) / canvas.height);
+				await Lib.wait(1);
 			}
 		}
 	}
@@ -498,6 +567,18 @@ export function start()
 		}
 		return select
 	}
+	function showLoader()
+	{
+		loader.classList.add("loader-visible");
+	}
+	function hideLoader()
+	{
+		loader.classList.remove("loader-visible");
+	}
+	function setLoader(v: number)
+	{
+		loader.style.setProperty("--v", `${v}`);
+	}
 }
 
 interface Point
@@ -506,4 +587,11 @@ interface Point
 	y: number,
 	color: "red" | "blue" | "green",
 	d: number,
+}
+interface ModelSave
+{
+	layers: number[],
+	fn: string,
+	sh: boolean,
+	lr: number,
 }

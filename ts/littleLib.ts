@@ -11,6 +11,7 @@ export const canvas = {
 		ClientWH: CanvasFitToParentClientWH, },
 	drawGrid: drawGridOnCanvas,
 	drawCoords: drawMouseCoordsOnCanvas,
+	saveAsPng: saveCanvasAsPng,
 }
 export const intersection = {
 	rectPoint: rectPointIntersect,
@@ -24,7 +25,10 @@ export const random = {
 	boolean: random_boolean,
 	asbOrNot: random_asbOrNot,
 }
-
+export async function wait(t: number)
+{
+	return new Promise(res => setTimeout(res, t));
+}
 
 
 
@@ -141,6 +145,23 @@ function drawMouseCoordsOnCanvas(ctx: CanvasRenderingContext2D, x: number, y: nu
 	const text = `x: ${x}, y: ${y}`;
 	ctx.fillText(text, width - ctx.measureText(text).width - 2, height - 3);
 	ctx.restore();
+}
+/**
+ * @param fname *.png
+ */
+export function saveCanvasAsPng(canvas: HTMLCanvasElement, fname: string)
+{
+	const a = document.createElement("a");
+	a.setAttribute("download", fname);
+
+	canvas.toBlob(blob =>
+	{
+		if (!blob) return;
+		const url = URL.createObjectURL(blob);
+		a.setAttribute("href", url);
+		a.click();
+		URL.revokeObjectURL(url);
+	});
 }
 
 

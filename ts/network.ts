@@ -1,10 +1,15 @@
 import { backwards, Connections, findError, forwards, Neuron } from "./netFunctions.js";
 
+type Activator = "sigmoid" | "relu" | "tanh" | "linear";
+
 export class Network
 {
 	private activator: (x: number) => number = (x: number) => x;
 	private activatorD: (y: number) => number = () => 1;
-	public set Activator(v: "sigmoid" | "relu" | "tanh" | "linear") {
+	private _activator: Activator = "sigmoid";
+	public set Activator(v: Activator)
+	{
+		this._activator = v;
 		switch (v) {
 			case "linear":
 				this.activator = (x) => x;
@@ -33,6 +38,10 @@ export class Network
 				};
 				break;
 		}
+	}
+	public get Activator()
+	{
+		return this._activator;
 	}
 
 	public learningCoefficient = 0.05;
