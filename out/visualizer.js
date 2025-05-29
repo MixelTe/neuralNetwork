@@ -1,0 +1,113 @@
+import * as Lib from "./littleLib.js";
+const canvas = Lib.get.canvas("visualizer");
+const ctx = Lib.canvas.getContext2d(canvas);
+const chbDiv = Lib.get.div("visualizer-controls");
+const chb = Lib.Input([], "checkbox");
+chb.checked = true;
+chb.addEventListener("change", () => {
+    canvas.style.display = chb.checked ? "" : "none";
+});
+chbDiv.appendChild(Lib.initEl("label", "lbl-chbx", [
+    chb,
+    Lib.Span([], [], "Visualizer"),
+], undefined));
+const nodeSize = 45;
+// const spaceH = 140;
+// const spaceV = 80;
+const spaceH = nodeSize * 2.9;
+const spaceV = nodeSize * 1.6;
+const colors = {
+    connection: "grey",
+    outline: "black",
+    node: "wheat",
+    value: "black",
+    error: "tomato",
+    weight: "wheat",
+    weightOutline: "black",
+};
+export function setVisualizerVisible(visible) {
+    chb.checked = visible;
+    canvas.style.display = visible ? "" : "none";
+}
+export function draw(network) {
+    if (!chb.checked)
+        return;
+    canvas.width = network.neurons.length * (nodeSize + spaceH);
+    let maxNodes = 0;
+    network.neurons.forEach(layer => maxNodes = Math.max(maxNodes, layer.length));
+    canvas.height = maxNodes * (nodeSize + spaceV) + nodeSize;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = `${nodeSize / 5 * 2}px Arial`;
+    ctx.strokeStyle = colors.connection;
+    ctx.lineWidth = 3;
+    for (let j = 0; j < network.connections.length; j++) {
+        const cons = network.connections[j];
+        for (let o = 0; o < cons.length; o++) {
+            const nos = cons[o];
+            for (let i = 0; i < nos.length; i++) {
+                const [x1, y1] = calcXY(j, i, nos.length, maxNodes);
+                const [x2, y2] = calcXY(j + 1, o, cons.length, maxNodes);
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            }
+        }
+    }
+    const fontSize = nodeSize / 5 * 2.5;
+    ctx.font = `${fontSize}px Arial`;
+    ctx.strokeStyle = colors.outline;
+    ctx.lineWidth = 1;
+    for (let x = 0; x < network.neurons.length; x++) {
+        const layer = network.neurons[x];
+        for (let y = 0; y < layer.length; y++) {
+            const node = layer[y];
+            const [X, Y] = calcXY(x, y, layer.length, maxNodes);
+            ctx.fillStyle = colors.node;
+            ctx.beginPath();
+            ctx.arc(X, Y, nodeSize, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            const offset = x == 0 ? 0 : fontSize / 2;
+            ctx.fillStyle = colors.value;
+            ctx.fillText(node.value.toFixed(4), X - fontSize * 1.5, Y + fontSize / 3 - offset);
+            if (x != 0) {
+                ctx.fillStyle = colors.error;
+                ctx.fillText(node.error.toFixed(4), X - fontSize * 1.5, Y + fontSize / 3 + offset);
+            }
+        }
+    }
+    ctx.strokeStyle = colors.weightOutline;
+    ctx.fillStyle = colors.weight;
+    ctx.lineWidth = 0.5;
+    for (let j = 0; j < network.connections.length; j++) {
+        const cons = network.connections[j];
+        for (let o = 0; o < cons.length; o++) {
+            const nos = cons[o];
+            for (let i = 0; i < nos.length; i++) {
+                const ni = nos[i];
+                const [x1, y1] = calcXY(j, i, nos.length, maxNodes);
+                const [x2, y2] = calcXY(j + 1, o, cons.length, maxNodes);
+                const d = Math.atan2(y1 - y2, x1 - x2);
+                ctx.save();
+                ctx.translate(x2, y2);
+                ctx.rotate(d);
+                ctx.scale(-1, -1);
+                const text = ni.toFixed(3);
+                const x = -fontSize * (text.length - 0.5 - (text.indexOf("-") >= 0 ? 0.5 : 0));
+                const y = 0;
+                ctx.fillText(text, x, y);
+                ctx.strokeText(text, x, y);
+                ctx.restore();
+            }
+        }
+    }
+}
+function calcXY(x, y, nodes, maxNodes) {
+    const X = x * (nodeSize + spaceH) + nodeSize;
+    // const offset = (maxNodes - nodes) * (nodeSize + spaceV) / 2;
+    // const Y = y * (nodeSize + spaceV) + nodeSize + offset;
+    const spaceVl = (maxNodes * (nodeSize + spaceV) - nodes * nodeSize) / nodes;
+    const Y = y * (nodeSize + spaceVl) + nodeSize + spaceVl / 2;
+    return [X, Y];
+}
