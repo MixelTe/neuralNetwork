@@ -218,3 +218,57 @@ input[type="checkbox"]:checked::before {
 	background-color: teal;
 	border-radius: 0.25em;
 }
+
+.scrollDown {
+	position: absolute;
+	bottom: 0;
+	left: 50%;
+	animation: scrollDownFade 1ms;
+	animation-timeline: view();
+}
+
+@keyframes scrollDownFade {
+	0% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0;
+	}
+}
+
+.scrollDown > div {
+	position: absolute;
+	font-size: 2vw;
+	bottom: 0.5em;
+	left: 50%;
+	width: 4em;
+	aspect-ratio: 1;
+	border: 1em solid #ffffff88;
+	border-radius: 0.3em;
+	border-top: none;
+	border-left: none;
+	--transform: translate(-50%, 20%) translateY(-1em) rotate(45deg);
+	transform: var(--transform);
+	animation: scrollDownAnim 1s ease-in-out infinite;
+}
+.scrollDown > div:nth-child(2) {
+	bottom: 1.5em;
+	border-width: 0.7em;
+	width: 3em;
+	animation-delay: -200ms;
+}
+.scrollDown > div:nth-child(3) {
+	bottom: 2.2em;
+	border-width: 0.5em;
+	width: 2.3em;
+	animation-delay: -400ms;
+}
+
+@keyframes scrollDownAnim {
+	0%, 100% {
+		transform: translateY(0em) var(--transform);
+	}
+	50% {
+		transform: translateY(1em) var(--transform);
+	}
+}

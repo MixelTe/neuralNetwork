@@ -14,6 +14,7 @@ export function start()
 	const canvasDiv = Lib.Div();
 	const canvas = document.createElement("canvas");
 	const loader = Lib.get.div("loader");
+	const scrollDown = Lib.get.div("scrollDown");
 	const controlsDiv = Lib.Div(["padding", "container"]);
 	const errorSpan = Lib.Span("text-error");
 	const trainSpan = Lib.Span("text-normal");
@@ -75,6 +76,14 @@ export function start()
 		{
 			e.preventDefault();
 			onStartBtn();
+		}
+	})
+	window.addEventListener("scroll", e =>
+	{
+		if (window.scrollY > 200)
+		{
+			const p = scrollDown.parentElement;
+			if (p) p.removeChild(scrollDown);
 		}
 	})
 	addButton("Step", controlsDiv, () =>
@@ -196,6 +205,7 @@ export function start()
 			case "zones": points = preset_zones as Point[]; break;
 			case "circles": points = preset_circles as Point[]; break;
 		}
+		points = JSON.parse(JSON.stringify(points));
 		activePoint = points[0];
 		log(`Points preset [${presetSelect.value}] loaded!`);
 		redrawPoints();
@@ -303,6 +313,7 @@ export function start()
 	}))
 	visualizerDiv.prepend(Lib.Button([], "Draw high quality", async () =>
 	{
+		if (running) onStartBtn();
 		log("Start high quality drawing")
 		window.scrollTo(0, 0);
 		showLoader();
@@ -407,6 +418,7 @@ export function start()
 		const ps = hq ? 1 : pixelSize;
 		for (let y = 0; y < canvas.height; y += ps)
 		{
+			// const _y = y % 2 ? y : canvas.height - y - ps;
 			for (let x = 0; x < canvas.width; x += ps)
 			{
 				const res = network.calculate(normalize(x, y));
@@ -580,6 +592,12 @@ export function start()
 	{
 		loader.style.setProperty("--v", `${v}`);
 	}
+
+	points = JSON.parse(JSON.stringify(preset_lines));
+	log(`Points preset [${presetSelect.value}] loaded!`);
+	loadModel(JSON.parse(JSON.stringify(presets_model.lines)));
+	log(`Model preset [${presetSelect.value}] loaded!`);
+	onStartBtn();
 }
 
 interface Point
