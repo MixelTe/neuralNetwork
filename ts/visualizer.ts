@@ -6,10 +6,11 @@ const canvas = Lib.get.canvas("visualizer");
 const ctx = Lib.canvas.getContext2d(canvas);
 const chbDiv = Lib.get.div("visualizer-controls");
 const chb = Lib.Input([], "checkbox");
+let lastNetwork: Network | null = null;
 chb.checked = true;
 chb.addEventListener("change", () =>
 {
-	canvas.style.display = chb.checked ? "" : "none";
+	update();
 })
 chbDiv.appendChild(Lib.initEl("label", "lbl-chbx", [
 	chb,
@@ -32,15 +33,26 @@ const colors = {
 	weightOutline: "black",
 }
 
+function update()
+{
+	canvas.style.display = chb.checked ? "" : "none";
+	if (chb.checked && lastNetwork)
+	{
+		draw(lastNetwork);
+		lastNetwork = null;
+	}
+}
+
 export function setVisualizerVisible(visible: boolean)
 {
 	chb.checked = visible;
-	canvas.style.display = visible ? "" : "none";
+	update();
 }
 
 export function draw(network: Network)
 {
 	if (!chb.checked) return;
+	lastNetwork = network;
 	canvas.width = network.neurons.length * (nodeSize + spaceH);
 	let maxNodes = 0;
 	network.neurons.forEach(layer => maxNodes = Math.max(maxNodes, layer.length));

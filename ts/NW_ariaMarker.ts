@@ -39,7 +39,7 @@ export function start()
 	canvasDiv.style.overflow = "hidden";
 	body?.appendChild(canvasDiv);
 	canvasDiv.appendChild(canvas);
-	body?.appendChild(Lib.Div("desc", [], "LMB - add point, shift - green point, alt - blue point; RMB - remove point; shift+space = start/stop"));
+	body?.appendChild(Lib.Div("desc", [], "LMB - add point, shift - green point, alt - blue point; RMB - remove point; space - start/stop"));
 	body?.appendChild(controlsDiv);
 	body?.appendChild(saveDiv);
 	body?.appendChild(settingsDiv);
@@ -70,9 +70,9 @@ export function start()
 		train();
 	}
 	const startBtn = addButton("Start", controlsDiv, onStartBtn);
-	window.addEventListener("keypress", e =>
+	window.addEventListener("keydown", e =>
 	{
-		if (e.code == "Space" && e.shiftKey)
+		if (e.code == "Space")
 		{
 			e.preventDefault();
 			onStartBtn();
