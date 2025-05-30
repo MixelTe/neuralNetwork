@@ -272,3 +272,14 @@ input[type="checkbox"]:checked::before {
 		transform: translateY(1em) var(--transform);
 	}
 }
+
+.footer {
+	display: flex;
+	align-items: center;
+	gap: 1em;
+	padding: 1em 2em;
+}
+
+.gh img {
+	width: 2em;
+}
