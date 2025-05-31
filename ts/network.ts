@@ -96,7 +96,7 @@ export class Network
 	public load(data: string)
 	{
 		const parsed = <Connections[]>JSON.parse(data);
-		if (typeof parsed[0][0][0] != "number") throw new Error("Wrong data");
+		if (typeof parsed?.[0]?.[0]?.[0] != "number") throw new Error("Wrong data");
 		const neurons = [];
 		neurons.push(parsed[0][0].length);
 		for (let i = 1; i < parsed.length; i++)

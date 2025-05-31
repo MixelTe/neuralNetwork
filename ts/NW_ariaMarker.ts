@@ -1,4 +1,5 @@
 import * as Lib from "./littleLib.js";
+import { TText } from "./littleLib.js";
 import { Network } from "./network.js";
 import { log, logError } from "./pageConsole.js";
 import { preset_circles, preset_lines, preset_waves, preset_zones, presets_model } from "./presets.js";
@@ -22,9 +23,9 @@ export function start()
 	const saveDiv = Lib.Div(["padding", "container", "container-outlined"]);
 	const slotPInp = Lib.Input("inp-short", "text");
 	const presetDiv = Lib.Div(["padding", "container", "container-outlined"]);
-	const presetSelect = createSelect(["lines", "waves", "zones", "circles"]);
+	const presetSelect = createSelect([["lines", "линии"], ["waves", "волны"], ["zones", "зоны"], ["circles", "круги"]]);
 	const settingsDiv = Lib.Div(["padding", "container"]);
-	const funcSelect = createSelect(["sigmoid", "relu", "tanh", "linear"]);
+	const funcSelect = createSelect([["sigmoid", "сигмоида"], ["relu", "relu"], ["tanh", "tanh"], ["linear", "линейная"]]);
 	const layersInp = Lib.Input([], "text");
 	const learnRateInp = Lib.Input([], "number");
 	const shiftingInp = Lib.Input([], "checkbox");
@@ -35,11 +36,14 @@ export function start()
 	const precisionSpan = Lib.Span("text-normal");
 	const recallSpan = Lib.Span("text-normal");
 	const f1Span = Lib.Span("text-normal");
+	const changeLang = Lib.get.link("changeLang");
 	canvasDiv.style.height = "100vh";
 	canvasDiv.style.overflow = "hidden";
 	body?.appendChild(canvasDiv);
 	canvasDiv.appendChild(canvas);
-	body?.appendChild(Lib.Div("desc", [], "LMB - add point, shift - green point, alt - blue point; RMB - remove point; space - start/stop"));
+	body?.appendChild(Lib.Div("desc", [TText(
+		"LMB - add point, shift - green point, alt - blue point; RMB - remove point; space - start/stop",
+		"ЛКМ - поставтить точку, shift - зелёные точки, alt - синие точки; ПКМ - удалить точку; пробел - старт/стоп")]));
 	body?.appendChild(controlsDiv);
 	body?.appendChild(saveDiv);
 	body?.appendChild(settingsDiv);
@@ -65,7 +69,7 @@ export function start()
 	function onStartBtn()
 	{
 		running = !running;
-		startBtn.innerText = running ? "Stop" : "Start";
+		Lib.setContent(startBtn, TText(running ? "Stop" : "Start", running ? "Стоп" : "Старт"))
 		log(running ? "Start training" : "Stop training");
 		train();
 	}
@@ -86,26 +90,26 @@ export function start()
 			if (p) p.removeChild(scrollDown);
 		}
 	})
-	addButton("Step", controlsDiv, () =>
+	addButton(TText("Step", "Шаг"), controlsDiv, () =>
 	{
 		log("Train one epoch");
 		trainOne();
 		drawAll();
 	});
-	addButton("Hide points", controlsDiv, btn =>
+	addButton(TText("Hide points", "Скрыть точки"), controlsDiv, btn =>
 	{
 		showPoints = !showPoints;
-		btn.innerText = showPoints ? "Hide points" : "Show points";
+		Lib.setContent(btn, TText(showPoints ? "Hide points" : "Show points", showPoints ? "Скрыть точки" : "Показать точки"))
 		redrawPoints();
 	});
-	addButton("Clear points", controlsDiv, () =>
+	addButton(TText("Delete all points", "Удалить все точки"), controlsDiv, () =>
 	{
 		log("Points cleared");
 		points = [];
 		activePoint = undefined;
 		drawAll();
 	});
-	addButton("Reset model", controlsDiv, () =>
+	addButton(TText("Reset model", "Сбросить модель"), controlsDiv, () =>
 	{
 		log("Model reseted");
 		network.createNetwork(layers, shiftingInp.checked);
@@ -115,9 +119,9 @@ export function start()
 	controlsDiv.appendChild(trainSpan);
 	controlsDiv.appendChild(speedSpan);
 
-	saveDiv.appendChild(Lib.Span("container-outlined-lbl", [], "Save values"));
-	saveDiv.appendChild(Lib.Span([], [], "Points: "));
-	addButton("Load", saveDiv, () =>
+	saveDiv.appendChild(Lib.Span("container-outlined-lbl", [TText("Save values", "Сохранить значения")]));
+	saveDiv.appendChild(Lib.Span([], [TText("Points: ", "Точки: ")]));
+	addButton(TText("Load", "Загрузить"), saveDiv, () =>
 	{
 		const v = localStorage.getItem("network_ariaMarker-savedPoints");
 		if (!v) return log("No model data to load");
@@ -138,7 +142,7 @@ export function start()
 			logError(e);
 		}
 	});
-	addButton("Save", saveDiv, () =>
+	addButton(TText("Save", "Сохранить"), saveDiv, () =>
 	{
 		const v = localStorage.getItem("network_ariaMarker-savedPoints");
 		const savedPoints = JSON.parse(v || "{}");
@@ -147,13 +151,13 @@ export function start()
 		localStorage.setItem("network_ariaMarker-savedPoints", JSON.stringify(savedPoints));
 		log(`Points data saved to slot [${slot}]!`);
 	});
-	saveDiv.appendChild(Lib.Span([], [], "Slot: "));
+	saveDiv.appendChild(Lib.Span([], [TText("Slot: ", "Слот: ")]));
 	saveDiv.appendChild(slotPInp);
 	slotPInp.value = "0";
 
 	saveDiv.appendChild(Lib.Span("hbr"));
-	saveDiv.appendChild(Lib.Span([], [], "Model: "));
-	addButton("Load", saveDiv, () =>
+	saveDiv.appendChild(Lib.Span([], [TText("Model: ", "Модель: ")]));
+	addButton(TText("Load", "Загрузить"), saveDiv, () =>
 	{
 		const v = localStorage.getItem("network_ariaMarker-savedModels");
 		if (!v) return log("No model data to load");
@@ -174,7 +178,7 @@ export function start()
 			logError(e);
 		}
 	});
-	addButton("Save", saveDiv, () =>
+	addButton(TText("Save", "Сохранить"), saveDiv, () =>
 	{
 		const v = localStorage.getItem("network_ariaMarker-savedModels");
 		const savedModels = JSON.parse(v || "{}");
@@ -189,14 +193,14 @@ export function start()
 		localStorage.setItem("network_ariaMarker-savedModels", JSON.stringify(savedModels));
 		log(`Model data saved to slot [${slot}]!`);
 	});
-	saveDiv.appendChild(Lib.Span([], [], "Slot: "));
+	saveDiv.appendChild(Lib.Span([], [TText("Slot: ", "Слот: ")]));
 	saveDiv.appendChild(slotMInp);
 	slotMInp.value = "0";
 
-	presetDiv.appendChild(Lib.Span("container-outlined-lbl", [], "For lazy :)"));
-	presetDiv.appendChild(Lib.Span([], [], "Presets: "));
+	presetDiv.appendChild(Lib.Span("container-outlined-lbl", [TText("For lazy :)", "Для ленивых :)")]));
+	presetDiv.appendChild(Lib.Span([], [TText("Presets: ", "Заготовки: ")]));
 	presetDiv.appendChild(presetSelect);
-	addButton("Load points", presetDiv, () =>
+	addButton(TText("Load points", "Загрузить точки"), presetDiv, () =>
 	{
 		switch (presetSelect.value)
 		{
@@ -210,7 +214,7 @@ export function start()
 		log(`Points preset [${presetSelect.value}] loaded!`);
 		redrawPoints();
 	});
-	addButton("Load suitable model", presetDiv, () =>
+	addButton(TText("Load suitable model", "Загрузить подходящую модель"), presetDiv, () =>
 	{
 		const preset = presets_model[presetSelect.value as keyof typeof presets_model];
 		loadModel(JSON.parse(JSON.stringify(preset)));
@@ -233,12 +237,12 @@ export function start()
 		trainCount = 0;
 	}
 
-	settingsDiv.appendChild(Lib.Span([], [], "Activation func: "));
+	settingsDiv.appendChild(Lib.Span([], [TText("Activation func: ", "Функция активации: ")]));
 	settingsDiv.appendChild(funcSelect);
-	settingsDiv.appendChild(Lib.Span([], [], "Layers: "));
+	settingsDiv.appendChild(Lib.Span([], [TText("Layers: ", "Слои: ")]));
 	settingsDiv.appendChild(layersInp);
-	settingsDiv.appendChild(Lib.initEl("label", "lbl-chbx", [shiftingInp, Lib.Span([], [], "Shifting")], undefined));
-	settingsDiv.appendChild(Lib.Span([], [], "Learn rate: "));
+	settingsDiv.appendChild(Lib.initEl("label", "lbl-chbx", [shiftingInp, Lib.Span([], [TText("Bias", "Смещение")])], undefined));
+	settingsDiv.appendChild(Lib.Span([], [TText("Learn rate: ", "Коэф. обучения: ")]));
 	settingsDiv.appendChild(Lib.Span("inp-lr", [
 		learnRateInp,
 		Lib.Button([], "×2", () => changeInpLr(2)),
@@ -274,7 +278,6 @@ export function start()
 		drawAll();
 	});
 	funcSelect.value = network.Activator;
-	console.log(network.Activator);
 
 	layersInp.addEventListener("change", () =>
 	{
@@ -305,13 +308,13 @@ export function start()
 	learnRateInp.addEventListener("input", () => network.learningCoefficient = learnRateInp.valueAsNumber);
 
 	const visualizerDiv = Lib.get.div("visualizer-controls");
-	visualizerDiv.prepend(Lib.Button([], "Save image", async () =>
+	visualizerDiv.prepend(Lib.Button([], TText("Save image", "Сохранить изображении"), async () =>
 	{
 		const fname = `NeuralNetwork-${funcSelect.value}-${layers.slice(1, -1).join("_")}${shiftingInp.checked ? "-sh" : ""}-lr_${learnRateInp.valueAsNumber}.png`
 		Lib.canvas.saveAsPng(canvas, fname);
 		log(`Canvas image saved as ${fname}`);
 	}))
-	visualizerDiv.prepend(Lib.Button([], "Draw high quality", async () =>
+	visualizerDiv.prepend(Lib.Button([], TText("Draw high quality", "Отрисовка в высоком качестве"), async () =>
 	{
 		if (running) onStartBtn();
 		log("Start high quality drawing")
@@ -560,22 +563,25 @@ export function start()
 	{
 		return Math.min(Math.max(min, v), max);
 	}
-	function addButton(text: string, parent: HTMLElement, onclick: (btn: HTMLButtonElement) => void)
+	function addButton(text: string | HTMLElement, parent: HTMLElement, onclick: (btn: HTMLButtonElement) => void)
 	{
 		const button = document.createElement("button");
-		button.innerText = text;
+		if (typeof text == "string")
+			button.innerText = text;
+		else
+			button.appendChild(text);
 		button.addEventListener("click", onclick.bind(button, button));
 		parent.appendChild(button);
 		return button;
 	}
-	function createSelect(options: string[])
+	function createSelect(options: string[][])
 	{
 		const select = document.createElement("select");
 		for (const option of options)
 		{
 			const el = document.createElement("option");
-			el.value = option;
-			el.innerText = option;
+			el.value = option[0];
+			el.appendChild(TText(option[0], option[1]))
 			select.appendChild(el);
 		}
 		return select
@@ -592,6 +598,24 @@ export function start()
 	{
 		loader.style.setProperty("--v", `${v}`);
 	}
+
+	function updateLang()
+	{
+		Lib.setLang(!Lib.langEn);
+		changeLang.innerText = Lib.langEn ? "En" : "Ru";
+		changeLang.href = Lib.langEn ? "?lang=ru" : "?lang=en";
+		const url = new URL(location.href);
+		if (Lib.langEn) url.searchParams.delete("lang");
+		else url.searchParams.set("lang", "ru");
+		history.replaceState(undefined, "", url);
+	}
+	Lib.setLang(new URL(location.href).searchParams.get("lang") == "ru");
+	updateLang();
+	changeLang.addEventListener("click", e =>
+	{
+		e.preventDefault();
+		updateLang();
+	})
 
 	points = JSON.parse(JSON.stringify(preset_lines));
 	log(`Points preset [${presetSelect.value}] loaded!`);

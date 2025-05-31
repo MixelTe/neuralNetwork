@@ -1,5 +1,6 @@
 import * as Lib from "./littleLib.js";
 import { Network } from "./network.js";
+import { TText } from "./littleLib.js";
 import { log } from "./pageConsole.js";
 
 const canvas = Lib.get.canvas("visualizer");
@@ -14,7 +15,7 @@ chb.addEventListener("change", () =>
 })
 chbDiv.appendChild(Lib.initEl("label", "lbl-chbx", [
 	chb,
-	Lib.Span([], [], "Visualizer"),
+	TText("Visualizer", "Визуализатор"),
 ], undefined))
 
 const nodeSize = 45;

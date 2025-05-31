@@ -17,7 +17,13 @@ body {
 canvas {
 	user-select: none;
 }
+a {
+	text-decoration: none;
+}
 
+#network {
+	min-height: 100dvh;
+}
 #console {
 	max-height: 15em;
 	overflow-y: auto;
@@ -109,7 +115,7 @@ canvas {
 	/* background: #555; */
 }
 
-button, select {
+button, select, .btn {
 	color: inherit;
 	background-color: transparent;
 	border: 2px solid currentColor;
@@ -118,11 +124,11 @@ button, select {
 	height: 1.9em;
 	cursor: pointer;
 }
-button:hover {
+button:hover, .btn:hover {
 	text-decoration: underline;
 }
 
-input, option {
+input, option, .btn {
 	background-color: #1e1e1e;
 	color: #d4d4d4;
 }
@@ -279,7 +285,15 @@ input[type="checkbox"]:checked::before {
 	gap: 1em;
 	padding: 1em 2em;
 }
+.footer__gap {
+	flex-grow: 1;
+}
 
 .gh img {
 	width: 2em;
+}
+
+.footer a {
+	display: flex;
+	align-items: center;
 }

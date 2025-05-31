@@ -1,14 +1,16 @@
-	export const get = {
+export const get = {
 	div: getDiv,
 	button: getButton,
 	canvas: getCanvas,
 	input: getInput,
+	link: getLink,
 }
 export const canvas = {
 	getContext2d: getCanvasContext,
 	fitToParent: {
 		BCR: CanvasFitToParentBCR,
-		ClientWH: CanvasFitToParentClientWH, },
+		ClientWH: CanvasFitToParentClientWH,
+	},
 	drawGrid: drawGridOnCanvas,
 	drawCoords: drawMouseCoordsOnCanvas,
 	saveAsPng: saveCanvasAsPng,
@@ -40,6 +42,13 @@ function getButton(id: string)
 	if (el instanceof HTMLButtonElement) return el;
 	throw new Error(`${id} element not Button`);
 }
+function getLink(id: string)
+{
+	const el = <unknown | null>document.getElementById(id);
+	if (el == null) throw new Error(`${id} not found`);
+	if (el instanceof HTMLAnchorElement) return el;
+	throw new Error(`${id} element not Link`);
+}
 function getDiv(id: string)
 {
 	const el = <unknown | null>document.getElementById(id);
@@ -67,7 +76,7 @@ function getInput(id: string)
 //canvas
 function getCanvasContext(canvas: HTMLCanvasElement, willReadFrequently = false)
 {
-	const ctx = canvas.getContext("2d", {willReadFrequently});
+	const ctx = canvas.getContext("2d", { willReadFrequently });
 	if (ctx == null) throw new Error(`Context is null`);
 	return ctx;
 }
@@ -99,22 +108,22 @@ function drawGridOnCanvas(ctx: CanvasRenderingContext2D, cellSize: number, color
 	const canvasWidth = ctx.canvas.width;
 	const canvasHeight = ctx.canvas.height;
 
-    ctx.save();
+	ctx.save();
 	ctx.strokeStyle = color;
 	ctx.lineWidth = 2;
 	ctx.beginPath();
-    for (let x = cellSize; x < canvasWidth; x += cellSize)
+	for (let x = cellSize; x < canvasWidth; x += cellSize)
 	{
 		ctx.moveTo(x, 0);
 		ctx.lineTo(x, canvasHeight);
 	}
-    for (let y = cellSize; y < canvasWidth; y += cellSize)
+	for (let y = cellSize; y < canvasWidth; y += cellSize)
 	{
 		ctx.moveTo(0, y);
 		ctx.lineTo(canvasWidth, y);
 	}
 	ctx.stroke();
-    ctx.restore();
+	ctx.restore();
 }
 function drawMouseCoordsOnCanvas(ctx: CanvasRenderingContext2D, x: number, y: number)
 {
@@ -191,12 +200,12 @@ function rectIntersect(rect1: IRect, rect2: IRect)
 {
 	normalizeRect(rect1);
 	normalizeRect(rect2);
-    return (
-        rect1.x + rect1.width >= rect2.x &&
-        rect2.x + rect2.width >= rect1.x &&
-        rect1.y + rect1.height >= rect2.y &&
-        rect2.y + rect2.height >= rect1.y
-    );
+	return (
+		rect1.x + rect1.width >= rect2.x &&
+		rect2.x + rect2.width >= rect1.x &&
+		rect1.y + rect1.height >= rect2.y &&
+		rect2.y + rect2.height >= rect1.y
+	);
 }
 function normalizeRect(rect: IRect)
 {
@@ -223,8 +232,8 @@ function random_asbOrNot(num: number)
 
 function random_boolean()
 {
-    if (Math.random() < 0.5) return true;
-    return false;
+	if (Math.random() < 0.5) return true;
+	return false;
 }
 
 function randomInt(bound: number)
@@ -246,9 +255,9 @@ export function square(num: number)
 }
 export function loadScript(scriptPath: string)
 {
-    const el = document.createElement("script");
-    el.src = scriptPath;
-    document.head.appendChild(el);
+	const el = document.createElement("script");
+	el.src = scriptPath;
+	document.head.appendChild(el);
 }
 export function addButtonListener(id: string, f: (this: HTMLButtonElement, e: MouseEvent) => void)
 {
@@ -384,7 +393,8 @@ export class Rect
 		return new Point(this.x, this.y);
 	}
 }
-export class Point {
+export class Point
+{
 	static r = 2;
 	constructor(
 		public x: number,
@@ -419,7 +429,8 @@ export class Point {
 		return this.copy();
 	}
 }
-export class Circle {
+export class Circle
+{
 	constructor(
 		public x: number,
 		public y: number,
@@ -476,7 +487,8 @@ export interface IRect
 	height: number
 }
 
-export interface IPoint {
+export interface IPoint
+{
 	x: number,
 	y: number,
 }
@@ -508,9 +520,9 @@ export function Input(classes?: string[] | string, type?: string, placeholder?: 
 	if (placeholder) input.placeholder = placeholder;
 	return input;
 }
-export function Button(classes?: string[] | string, innerText?: string, clickListener?: (btn: HTMLButtonElement) => void)
+export function Button(classes?: string[] | string, innerText?: string | HTMLElement, clickListener?: (btn: HTMLButtonElement) => void)
 {
-	const button = initEl("button", classes, undefined, innerText);
+	const button = typeof innerText == "string" || !innerText ? initEl("button", classes, undefined, innerText) : initEl("button", classes, [innerText], undefined);
 	if (clickListener) button.addEventListener("click", clickListener.bind(undefined, button));
 	return button;
 }
@@ -527,4 +539,31 @@ export function initEl<K extends keyof HTMLElementTagNameMap>(tagName: K, classe
 	if (children) children.forEach(ch => el.appendChild(ch));
 
 	return el;
+}
+
+
+export let langEn = true;
+const ttexts: (() => void)[] = [];
+
+export function setLang(en: boolean)
+{
+	langEn = en;
+	ttexts.forEach(f => f());
+}
+
+export function TText(en: string, ru: string)
+{
+	const span = Span();
+	const update = () =>
+	{
+		span.innerText = langEn ? en : ru;
+	};
+	update();
+	ttexts.push(update);
+	return span;
+}
+export function setContent(el: HTMLElement, content: HTMLElement)
+{
+	el.innerHTML = "";
+	el.appendChild(content);
 }
