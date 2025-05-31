@@ -121,7 +121,7 @@ button, select, .btn {
 	border: 2px solid currentColor;
 	border-radius: 0.15em;
 	padding: 0em 0.4em;
-	height: 1.9em;
+	min-height: 1.9em;
 	cursor: pointer;
 }
 button:hover, .btn:hover {

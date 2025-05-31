@@ -120,8 +120,10 @@ export function start()
 	controlsDiv.appendChild(speedSpan);
 
 	saveDiv.appendChild(Lib.Span("container-outlined-lbl", [TText("Save values", "Сохранить значения")]));
-	saveDiv.appendChild(Lib.Span([], [TText("Points: ", "Точки: ")]));
-	addButton(TText("Load", "Загрузить"), saveDiv, () =>
+	const savePointsDiv = Lib.Div("container");
+	saveDiv.appendChild(savePointsDiv);
+	savePointsDiv.appendChild(Lib.Span([], [TText("Points: ", "Точки: ")]));
+	addButton(TText("Load", "Загрузить"), savePointsDiv, () =>
 	{
 		const v = localStorage.getItem("network_ariaMarker-savedPoints");
 		if (!v) return log("No model data to load");
@@ -142,7 +144,7 @@ export function start()
 			logError(e);
 		}
 	});
-	addButton(TText("Save", "Сохранить"), saveDiv, () =>
+	addButton(TText("Save", "Сохранить"), savePointsDiv, () =>
 	{
 		const v = localStorage.getItem("network_ariaMarker-savedPoints");
 		const savedPoints = JSON.parse(v || "{}");
@@ -151,13 +153,15 @@ export function start()
 		localStorage.setItem("network_ariaMarker-savedPoints", JSON.stringify(savedPoints));
 		log(`Points data saved to slot [${slot}]!`);
 	});
-	saveDiv.appendChild(Lib.Span([], [TText("Slot: ", "Слот: ")]));
-	saveDiv.appendChild(slotPInp);
+	savePointsDiv.appendChild(Lib.Span([], [TText("Slot: ", "Слот: ")]));
+	savePointsDiv.appendChild(slotPInp);
 	slotPInp.value = "0";
 
 	saveDiv.appendChild(Lib.Span("hbr"));
-	saveDiv.appendChild(Lib.Span([], [TText("Model: ", "Модель: ")]));
-	addButton(TText("Load", "Загрузить"), saveDiv, () =>
+	const saveModelDiv = Lib.Div("container");
+	saveDiv.appendChild(saveModelDiv);
+	saveModelDiv.appendChild(Lib.Span([], [TText("Model: ", "Модель: ")]));
+	addButton(TText("Load", "Загрузить"), saveModelDiv, () =>
 	{
 		const v = localStorage.getItem("network_ariaMarker-savedModels");
 		if (!v) return log("No model data to load");
@@ -178,7 +182,7 @@ export function start()
 			logError(e);
 		}
 	});
-	addButton(TText("Save", "Сохранить"), saveDiv, () =>
+	addButton(TText("Save", "Сохранить"), saveModelDiv, () =>
 	{
 		const v = localStorage.getItem("network_ariaMarker-savedModels");
 		const savedModels = JSON.parse(v || "{}");
@@ -193,8 +197,8 @@ export function start()
 		localStorage.setItem("network_ariaMarker-savedModels", JSON.stringify(savedModels));
 		log(`Model data saved to slot [${slot}]!`);
 	});
-	saveDiv.appendChild(Lib.Span([], [TText("Slot: ", "Слот: ")]));
-	saveDiv.appendChild(slotMInp);
+	saveModelDiv.appendChild(Lib.Span([], [TText("Slot: ", "Слот: ")]));
+	saveModelDiv.appendChild(slotMInp);
 	slotMInp.value = "0";
 
 	presetDiv.appendChild(Lib.Span("container-outlined-lbl", [TText("For lazy :)", "Для ленивых :)")]));
@@ -237,16 +241,22 @@ export function start()
 		trainCount = 0;
 	}
 
-	settingsDiv.appendChild(Lib.Span([], [TText("Activation func: ", "Функция активации: ")]));
-	settingsDiv.appendChild(funcSelect);
-	settingsDiv.appendChild(Lib.Span([], [TText("Layers: ", "Слои: ")]));
-	settingsDiv.appendChild(layersInp);
+	settingsDiv.appendChild(Lib.Span("container", [
+		TText("Activation func: ", "Функция активации: "),
+		funcSelect,
+	]));
+	settingsDiv.appendChild(Lib.Span("container", [
+		TText("Layers: ", "Слои: "),
+		layersInp,
+	]));
 	settingsDiv.appendChild(Lib.initEl("label", "lbl-chbx", [shiftingInp, Lib.Span([], [TText("Bias", "Смещение")])], undefined));
-	settingsDiv.appendChild(Lib.Span([], [TText("Learn rate: ", "Коэф. обучения: ")]));
-	settingsDiv.appendChild(Lib.Span("inp-lr", [
-		learnRateInp,
-		Lib.Button([], "×2", () => changeInpLr(2)),
-		Lib.Button([], "÷2", () => changeInpLr(0.5)),
+	settingsDiv.appendChild(Lib.Span("container", [
+		TText("Learn rate: ", "Коэф. обучения: "),
+		Lib.Span("inp-lr", [
+			learnRateInp,
+			Lib.Button([], "×2", () => changeInpLr(2)),
+			Lib.Button([], "÷2", () => changeInpLr(0.5)),
+		])
 	]));
 	function changeInpLr(m: number)
 	{
@@ -254,21 +264,28 @@ export function start()
 		learnRateInp.value = `${network.learningCoefficient}`;
 	}
 
-	{
-		const lossLbl = Lib.Span([], [], "Loss: ")
-		lossLbl.title = "Cross-Entropy Loss";
-		statsDiv.appendChild(lossLbl);
-	}
-
-	statsDiv.appendChild(lossSpan);
-	statsDiv.appendChild(Lib.Span([], [], "Accuracy: "));
-	statsDiv.appendChild(accuracySpan);
-	statsDiv.appendChild(Lib.Span([], [], "Precision: "));
-	statsDiv.appendChild(precisionSpan);
-	statsDiv.appendChild(Lib.Span([], [], "Recall: "));
-	statsDiv.appendChild(recallSpan);
-	statsDiv.appendChild(Lib.Span([], [], "F1: "));
-	statsDiv.appendChild(f1Span);
+	const lossLbl = Lib.Span([], [], "Loss: ")
+	lossLbl.title = "Cross-Entropy Loss";
+	statsDiv.appendChild(Lib.Span([], [
+		lossLbl,
+		lossSpan,
+	]));
+	statsDiv.appendChild(Lib.Span([], [
+		Lib.Span([], [], "Accuracy: "),
+		accuracySpan,
+	]));
+	statsDiv.appendChild(Lib.Span([], [
+		Lib.Span([], [], "Precision: "),
+		precisionSpan,
+	]));
+	statsDiv.appendChild(Lib.Span([], [
+		Lib.Span([], [], "Recall: "),
+		recallSpan,
+	]));
+	statsDiv.appendChild(Lib.Span([], [
+		Lib.Span([], [], "F1: "),
+		f1Span,
+	]));
 
 	funcSelect.addEventListener("change", () =>
 	{
