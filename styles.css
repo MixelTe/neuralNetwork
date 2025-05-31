@@ -17,7 +17,13 @@ body {
 canvas {
 	user-select: none;
 }
+a {
+	text-decoration: none;
+}
 
+#network {
+	min-height: 100dvh;
+}
 #console {
 	max-height: 15em;
 	overflow-y: auto;
@@ -86,6 +92,9 @@ canvas {
 	padding-inline: 0.2em;
 	font-size: 0.8em;
 }
+.container-outlined ~ .container-outlined {
+	margin-top: 1.2em;
+}
 .desc {
 	padding: 0.8em;
 	font-size: 0.8em;
@@ -109,20 +118,20 @@ canvas {
 	/* background: #555; */
 }
 
-button, select {
+button, select, .btn {
 	color: inherit;
 	background-color: transparent;
 	border: 2px solid currentColor;
 	border-radius: 0.15em;
 	padding: 0em 0.4em;
-	height: 1.9em;
+	min-height: 1.9em;
 	cursor: pointer;
 }
-button:hover {
+button:hover, .btn:hover {
 	text-decoration: underline;
 }
 
-input, option {
+input, option, .btn {
 	background-color: #1e1e1e;
 	color: #d4d4d4;
 }
@@ -171,6 +180,10 @@ input[type="checkbox"]::before {
 }
 input[type="checkbox"]:checked::before {
 	transform: scale(1) rotate(45deg);
+}
+
+input[type="color"] {
+	padding: 0;
 }
 
 .lbl-chbx {
@@ -279,7 +292,15 @@ input[type="checkbox"]:checked::before {
 	gap: 1em;
 	padding: 1em 2em;
 }
+.footer__gap {
+	flex-grow: 1;
+}
 
 .gh img {
 	width: 2em;
+}
+
+.footer a {
+	display: flex;
+	align-items: center;
 }

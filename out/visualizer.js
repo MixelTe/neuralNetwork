@@ -1,4 +1,5 @@
 import * as Lib from "./littleLib.js";
+import { TText } from "./littleLib.js";
 const canvas = Lib.get.canvas("visualizer");
 const ctx = Lib.canvas.getContext2d(canvas);
 const chbDiv = Lib.get.div("visualizer-controls");
@@ -10,7 +11,7 @@ chb.addEventListener("change", () => {
 });
 chbDiv.appendChild(Lib.initEl("label", "lbl-chbx", [
     chb,
-    Lib.Span([], [], "Visualizer"),
+    TText("Visualizer", "Визуализатор"),
 ], undefined));
 const nodeSize = 45;
 // const spaceH = 140;
@@ -79,10 +80,18 @@ export function draw(network) {
             ctx.stroke();
             const offset = x == 0 ? 0 : fontSize / 2;
             ctx.fillStyle = colors.value;
-            ctx.fillText(node.value.toFixed(4), X - fontSize * 1.5, Y + fontSize / 3 - offset);
+            ctx.fillText(`${node.value}`.slice(0, 6 + (node.value < 0 ? 1 : 0)), X - fontSize * 1.5, Y + fontSize / 3 - offset);
             if (x != 0) {
                 ctx.fillStyle = colors.error;
-                ctx.fillText(node.error.toFixed(4), X - fontSize * 1.5, Y + fontSize / 3 + offset);
+                ctx.fillText(`${node.error}`.slice(0, 6 + (node.error < 0 ? 1 : 0)), X - fontSize * 1.5, Y + fontSize / 3 + offset);
+            }
+            if (x == 0 && y < 2) {
+                ctx.fillStyle = colors.node;
+                ctx.fillText(y == 0 ? "X" : "Y", X + nodeSize / 2 - fontSize * 1.5, Y + nodeSize * 1.5);
+            }
+            if (x == network.neurons.length - 1) {
+                ctx.fillStyle = colors.node;
+                ctx.fillText(y == 0 ? "R" : y == 1 ? "G" : "B", X + nodeSize / 2 - fontSize * 1.3, Y + nodeSize * 1.5);
             }
         }
     }
@@ -102,7 +111,7 @@ export function draw(network) {
                 ctx.translate(x2, y2);
                 ctx.rotate(d);
                 ctx.scale(-1, -1);
-                const text = ni.toFixed(3);
+                const text = `${ni}`.slice(0, 6 + (ni < 0 ? 1 : 0));
                 const x = -fontSize * (text.length - 0.5 - (text.indexOf("-") >= 0 ? 0.5 : 0));
                 const y = 0;
                 ctx.fillText(text, x, y);

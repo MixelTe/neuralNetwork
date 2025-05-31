@@ -86,7 +86,7 @@ export class Network {
     }
     load(data) {
         const parsed = JSON.parse(data);
-        if (typeof parsed[0][0][0] != "number")
+        if (typeof parsed?.[0]?.[0]?.[0] != "number")
             throw new Error("Wrong data");
         const neurons = [];
         neurons.push(parsed[0][0].length);

@@ -3,6 +3,7 @@ export const get = {
     button: getButton,
     canvas: getCanvas,
     input: getInput,
+    link: getLink,
 };
 export const canvas = {
     getContext2d: getCanvasContext,
@@ -37,6 +38,14 @@ function getButton(id) {
     if (el instanceof HTMLButtonElement)
         return el;
     throw new Error(`${id} element not Button`);
+}
+function getLink(id) {
+    const el = document.getElementById(id);
+    if (el == null)
+        throw new Error(`${id} not found`);
+    if (el instanceof HTMLAnchorElement)
+        return el;
+    throw new Error(`${id} element not Link`);
 }
 function getDiv(id) {
     const el = document.getElementById(id);
@@ -413,7 +422,7 @@ export function Input(classes, type, placeholder) {
     return input;
 }
 export function Button(classes, innerText, clickListener) {
-    const button = initEl("button", classes, undefined, innerText);
+    const button = typeof innerText == "string" || !innerText ? initEl("button", classes, undefined, innerText) : initEl("button", classes, [innerText], undefined);
     if (clickListener)
         button.addEventListener("click", clickListener.bind(undefined, button));
     return button;
@@ -431,4 +440,23 @@ export function initEl(tagName, classes, children, innerText) {
     if (children)
         children.forEach(ch => el.appendChild(ch));
     return el;
+}
+export let langEn = true;
+const ttexts = [];
+export function setLang(en) {
+    langEn = en;
+    ttexts.forEach(f => f());
+}
+export function TText(en, ru) {
+    const span = Span();
+    const update = () => {
+        span.innerText = langEn ? en : ru;
+    };
+    update();
+    ttexts.push(update);
+    return span;
+}
+export function setContent(el, content) {
+    el.innerHTML = "";
+    el.appendChild(content);
 }

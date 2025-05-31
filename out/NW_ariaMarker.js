@@ -1,4 +1,5 @@
 import * as Lib from "./littleLib.js";
+import { TText } from "./littleLib.js";
 import { Network } from "./network.js";
 import { log, logError } from "./pageConsole.js";
 import { preset_circles, preset_lines, preset_waves, preset_zones, presets_model } from "./presets.js";
@@ -6,6 +7,11 @@ import { draw, setVisualizerVisible } from "./visualizer.js";
 const pixelSize = 16;
 const pointSize = 7;
 const movePoints = false;
+const colors = {
+    "red": localStorage.getItem("network_ariaMarker-pointsColors_1") || "#ff0000",
+    "green": localStorage.getItem("network_ariaMarker-pointsColors_2") || "#00ff00",
+    "blue": localStorage.getItem("network_ariaMarker-pointsColors_3") || "#0000ff",
+};
 export function start() {
     const body = document.getElementById("network");
     const canvasDiv = Lib.Div();
@@ -16,12 +22,17 @@ export function start() {
     const errorSpan = Lib.Span("text-error");
     const trainSpan = Lib.Span("text-normal");
     const speedSpan = Lib.Span();
+    const pointsDiv = Lib.Div(["padding", "container", "container-outlined"]);
+    const colorInput1 = Lib.Input("", "color");
+    const colorInput2 = Lib.Input("", "color");
+    const colorInput3 = Lib.Input("", "color");
     const saveDiv = Lib.Div(["padding", "container", "container-outlined"]);
     const slotPInp = Lib.Input("inp-short", "text");
     const presetDiv = Lib.Div(["padding", "container", "container-outlined"]);
-    const presetSelect = createSelect(["lines", "waves", "zones", "circles"]);
+    const presetSelect = createSelect([["lines", "линии"], ["waves", "волны"], ["zones", "зоны"], ["circles", "круги"]]);
     const settingsDiv = Lib.Div(["padding", "container"]);
-    const funcSelect = createSelect(["sigmoid", "relu", "tanh", "linear"]);
+    const funcSelect = createSelect([["sigmoid", "сигмоида"], ["relu", "relu"], ["tanh", "tanh"], ["linear", "линейная"]]);
+    const colorSelect = createSelect([["1", "1"], ["2", "2"], ["3", "3"]]);
     const layersInp = Lib.Input([], "text");
     const learnRateInp = Lib.Input([], "number");
     const shiftingInp = Lib.Input([], "checkbox");
@@ -32,12 +43,20 @@ export function start() {
     const precisionSpan = Lib.Span("text-normal");
     const recallSpan = Lib.Span("text-normal");
     const f1Span = Lib.Span("text-normal");
+    const changeLang = Lib.get.link("changeLang");
     canvasDiv.style.height = "100vh";
     canvasDiv.style.overflow = "hidden";
     body?.appendChild(canvasDiv);
     canvasDiv.appendChild(canvas);
-    body?.appendChild(Lib.Div("desc", [], "LMB - add point, shift - green point, alt - blue point; RMB - remove point; space - start/stop"));
+    body?.appendChild(Lib.Div(["container", "desc"], [
+        TText("LMB - add point; ", "ЛКМ - поставтить точку; "),
+        TText("shift - use color 2; ", "shift - испл. цвет 2; "),
+        TText("alt - use color 3; ", "alt - испл. цвет 3; "),
+        TText("RMB or Double tap - remove point; ", "ПКМ или Двойное нажатие - удалить точку; "),
+        TText("space - start/stop", "пробел - старт/стоп"),
+    ]));
     body?.appendChild(controlsDiv);
+    body?.appendChild(pointsDiv);
     body?.appendChild(saveDiv);
     body?.appendChild(settingsDiv);
     body?.appendChild(statsDiv);
@@ -58,7 +77,7 @@ export function start() {
     draw(network);
     function onStartBtn() {
         running = !running;
-        startBtn.innerText = running ? "Stop" : "Start";
+        Lib.setContent(startBtn, TText(running ? "Stop" : "Start", running ? "Стоп" : "Старт"));
         log(running ? "Start training" : "Stop training");
         train();
     }
@@ -68,31 +87,37 @@ export function start() {
             e.preventDefault();
             onStartBtn();
         }
+        else if (e.code == "ArrowUp" && e.ctrlKey) {
+            changeInpLr(2);
+        }
+        else if (e.code == "ArrowDown" && e.ctrlKey) {
+            changeInpLr(0.5);
+        }
     });
     window.addEventListener("scroll", e => {
-        if (window.scrollY > 200) {
+        if (window.scrollY > 300) {
             const p = scrollDown.parentElement;
             if (p)
                 p.removeChild(scrollDown);
         }
     });
-    addButton("Step", controlsDiv, () => {
+    addButton(TText("Step", "Шаг"), controlsDiv, () => {
         log("Train one epoch");
         trainOne();
         drawAll();
     });
-    addButton("Hide points", controlsDiv, btn => {
+    addButton(TText("Hide points", "Скрыть точки"), controlsDiv, btn => {
         showPoints = !showPoints;
-        btn.innerText = showPoints ? "Hide points" : "Show points";
+        Lib.setContent(btn, TText(showPoints ? "Hide points" : "Show points", showPoints ? "Скрыть точки" : "Показать точки"));
         redrawPoints();
     });
-    addButton("Clear points", controlsDiv, () => {
+    addButton(TText("Delete all points", "Удалить все точки"), controlsDiv, () => {
         log("Points cleared");
         points = [];
         activePoint = undefined;
         drawAll();
     });
-    addButton("Reset model", controlsDiv, () => {
+    addButton(TText("Reset model", "Сбросить модель"), controlsDiv, () => {
         log("Model reseted");
         network.createNetwork(layers, shiftingInp.checked);
         drawAll();
@@ -100,9 +125,50 @@ export function start() {
     controlsDiv.appendChild(errorSpan);
     controlsDiv.appendChild(trainSpan);
     controlsDiv.appendChild(speedSpan);
-    saveDiv.appendChild(Lib.Span("container-outlined-lbl", [], "Save values"));
-    saveDiv.appendChild(Lib.Span([], [], "Points: "));
-    addButton("Load", saveDiv, () => {
+    colorInput1.value = colors.red;
+    colorInput2.value = colors.green;
+    colorInput3.value = colors.blue;
+    colorInput1.addEventListener("input", () => { colors.red = colorInput1.value; saveColors(); });
+    colorInput2.addEventListener("input", () => { colors.green = colorInput2.value; saveColors(); });
+    colorInput3.addEventListener("input", () => { colors.blue = colorInput3.value; saveColors(); });
+    pointsDiv.appendChild(Lib.Span("container-outlined-lbl", [TText("Points", "Точки")]));
+    pointsDiv.appendChild(Lib.Span("container", [
+        TText("Color 1:", "Цвет 1:"),
+        colorInput1,
+    ]));
+    pointsDiv.appendChild(Lib.Span("container", [
+        TText("Color 2:", "Цвет 2:"),
+        colorInput2,
+    ]));
+    pointsDiv.appendChild(Lib.Span("container", [
+        TText("Color 3:", "Цвет 3:"),
+        colorInput3,
+    ]));
+    addButton(TText("Reset", "Сбросить"), pointsDiv, () => {
+        colors.red = "#ff0000";
+        colors.green = "#00ff00";
+        colors.blue = "#0000ff";
+        colorInput1.value = colors.red;
+        colorInput2.value = colors.green;
+        colorInput3.value = colors.blue;
+        saveColors();
+        drawAll();
+    });
+    function saveColors() {
+        localStorage.setItem("network_ariaMarker-pointsColors_1", colors.red);
+        localStorage.setItem("network_ariaMarker-pointsColors_2", colors.green);
+        localStorage.setItem("network_ariaMarker-pointsColors_3", colors.blue);
+    }
+    pointsDiv.appendChild(Lib.Span("container", [
+        TText("Color of new:", "Цвет новых:"),
+        colorSelect,
+        TText("(if no keyboard)", "(если нет клавиатуры)"),
+    ]));
+    saveDiv.appendChild(Lib.Span("container-outlined-lbl", [TText("Save values", "Сохранить значения")]));
+    const savePointsDiv = Lib.Div("container");
+    saveDiv.appendChild(savePointsDiv);
+    savePointsDiv.appendChild(Lib.Span([], [TText("Points: ", "Точки: ")]));
+    addButton(TText("Load", "Загрузить"), savePointsDiv, () => {
         const v = localStorage.getItem("network_ariaMarker-savedPoints");
         if (!v)
             return log("No model data to load");
@@ -120,7 +186,7 @@ export function start() {
             logError(e);
         }
     });
-    addButton("Save", saveDiv, () => {
+    addButton(TText("Save", "Сохранить"), savePointsDiv, () => {
         const v = localStorage.getItem("network_ariaMarker-savedPoints");
         const savedPoints = JSON.parse(v || "{}");
         const slot = slotPInp.value;
@@ -128,12 +194,14 @@ export function start() {
         localStorage.setItem("network_ariaMarker-savedPoints", JSON.stringify(savedPoints));
         log(`Points data saved to slot [${slot}]!`);
     });
-    saveDiv.appendChild(Lib.Span([], [], "Slot: "));
-    saveDiv.appendChild(slotPInp);
+    savePointsDiv.appendChild(Lib.Span([], [TText("Slot: ", "Слот: ")]));
+    savePointsDiv.appendChild(slotPInp);
     slotPInp.value = "0";
     saveDiv.appendChild(Lib.Span("hbr"));
-    saveDiv.appendChild(Lib.Span([], [], "Model: "));
-    addButton("Load", saveDiv, () => {
+    const saveModelDiv = Lib.Div("container");
+    saveDiv.appendChild(saveModelDiv);
+    saveModelDiv.appendChild(Lib.Span([], [TText("Model: ", "Модель: ")]));
+    addButton(TText("Load", "Загрузить"), saveModelDiv, () => {
         const v = localStorage.getItem("network_ariaMarker-savedModels");
         if (!v)
             return log("No model data to load");
@@ -151,7 +219,7 @@ export function start() {
             logError(e);
         }
     });
-    addButton("Save", saveDiv, () => {
+    addButton(TText("Save", "Сохранить"), saveModelDiv, () => {
         const v = localStorage.getItem("network_ariaMarker-savedModels");
         const savedModels = JSON.parse(v || "{}");
         const slot = slotMInp.value;
@@ -165,13 +233,13 @@ export function start() {
         localStorage.setItem("network_ariaMarker-savedModels", JSON.stringify(savedModels));
         log(`Model data saved to slot [${slot}]!`);
     });
-    saveDiv.appendChild(Lib.Span([], [], "Slot: "));
-    saveDiv.appendChild(slotMInp);
+    saveModelDiv.appendChild(Lib.Span([], [TText("Slot: ", "Слот: ")]));
+    saveModelDiv.appendChild(slotMInp);
     slotMInp.value = "0";
-    presetDiv.appendChild(Lib.Span("container-outlined-lbl", [], "For lazy :)"));
-    presetDiv.appendChild(Lib.Span([], [], "Presets: "));
+    presetDiv.appendChild(Lib.Span("container-outlined-lbl", [TText("For lazy :)", "Для ленивых :)")]));
+    presetDiv.appendChild(Lib.Span([], [TText("Presets: ", "Заготовки: ")]));
     presetDiv.appendChild(presetSelect);
-    addButton("Load points", presetDiv, () => {
+    addButton(TText("Load points", "Загрузить точки"), presetDiv, () => {
         switch (presetSelect.value) {
             case "lines":
                 points = preset_lines;
@@ -191,7 +259,7 @@ export function start() {
         log(`Points preset [${presetSelect.value}] loaded!`);
         redrawPoints();
     });
-    addButton("Load suitable model", presetDiv, () => {
+    addButton(TText("Load suitable model", "Загрузить подходящую модель"), presetDiv, () => {
         const preset = presets_model[presetSelect.value];
         loadModel(JSON.parse(JSON.stringify(preset)));
         log(`Model preset [${presetSelect.value}] loaded!`);
@@ -209,35 +277,50 @@ export function start() {
         learnRateInp.value = `${modeSave.lr}`;
         trainCount = 0;
     }
-    settingsDiv.appendChild(Lib.Span([], [], "Activation func: "));
-    settingsDiv.appendChild(funcSelect);
-    settingsDiv.appendChild(Lib.Span([], [], "Layers: "));
-    settingsDiv.appendChild(layersInp);
-    settingsDiv.appendChild(Lib.initEl("label", "lbl-chbx", [shiftingInp, Lib.Span([], [], "Shifting")], undefined));
-    settingsDiv.appendChild(Lib.Span([], [], "Learn rate: "));
-    settingsDiv.appendChild(Lib.Span("inp-lr", [
-        learnRateInp,
-        Lib.Button([], "×2", () => changeInpLr(2)),
-        Lib.Button([], "÷2", () => changeInpLr(0.5)),
+    settingsDiv.appendChild(Lib.Span("container", [
+        TText("Activation func: ", "Функция активации: "),
+        funcSelect,
+    ]));
+    settingsDiv.appendChild(Lib.Span("container", [
+        TText("Layers: ", "Слои: "),
+        layersInp,
+    ]));
+    settingsDiv.appendChild(Lib.initEl("label", "lbl-chbx", [shiftingInp, Lib.Span([], [TText("Bias", "Смещение")])], undefined));
+    settingsDiv.appendChild(Lib.Span("container", [
+        TText("Learn rate: ", "Коэф. обучения: "),
+        Lib.Span("inp-lr", [
+            learnRateInp,
+            Lib.Button([], "×2", () => changeInpLr(2)),
+            Lib.Button([], "÷2", () => changeInpLr(0.5)),
+        ]),
+        Lib.Span([], [], "(ctrl+up/down)"),
     ]));
     function changeInpLr(m) {
         network.learningCoefficient = Math.min(network.learningCoefficient * m, 0.8);
         learnRateInp.value = `${network.learningCoefficient}`;
     }
-    {
-        const lossLbl = Lib.Span([], [], "Loss: ");
-        lossLbl.title = "Cross-Entropy Loss";
-        statsDiv.appendChild(lossLbl);
-    }
-    statsDiv.appendChild(lossSpan);
-    statsDiv.appendChild(Lib.Span([], [], "Accuracy: "));
-    statsDiv.appendChild(accuracySpan);
-    statsDiv.appendChild(Lib.Span([], [], "Precision: "));
-    statsDiv.appendChild(precisionSpan);
-    statsDiv.appendChild(Lib.Span([], [], "Recall: "));
-    statsDiv.appendChild(recallSpan);
-    statsDiv.appendChild(Lib.Span([], [], "F1: "));
-    statsDiv.appendChild(f1Span);
+    const lossLbl = Lib.Span([], [], "Loss: ");
+    lossLbl.title = "Cross-Entropy Loss";
+    statsDiv.appendChild(Lib.Span([], [
+        lossLbl,
+        lossSpan,
+    ]));
+    statsDiv.appendChild(Lib.Span([], [
+        Lib.Span([], [], "Accuracy: "),
+        accuracySpan,
+    ]));
+    statsDiv.appendChild(Lib.Span([], [
+        Lib.Span([], [], "Precision: "),
+        precisionSpan,
+    ]));
+    statsDiv.appendChild(Lib.Span([], [
+        Lib.Span([], [], "Recall: "),
+        recallSpan,
+    ]));
+    statsDiv.appendChild(Lib.Span([], [
+        Lib.Span([], [], "F1: "),
+        f1Span,
+    ]));
     funcSelect.addEventListener("change", () => {
         network.Activator = funcSelect.value;
         network.createNetwork(layers, shiftingInp.checked);
@@ -245,7 +328,6 @@ export function start() {
         drawAll();
     });
     funcSelect.value = network.Activator;
-    console.log(network.Activator);
     layersInp.addEventListener("change", () => {
         const layersNew = layersInp.value.trim().split(" ").map(v => Math.abs(parseInt(v))).filter(v => !isNaN(v) && v > 0);
         layers = [2, ...layersNew, 3];
@@ -271,12 +353,12 @@ export function start() {
     learnRateInp.value = `${network.learningCoefficient}`;
     learnRateInp.addEventListener("input", () => network.learningCoefficient = learnRateInp.valueAsNumber);
     const visualizerDiv = Lib.get.div("visualizer-controls");
-    visualizerDiv.prepend(Lib.Button([], "Save image", async () => {
+    visualizerDiv.prepend(Lib.Button([], TText("Save image", "Сохранить изображении"), async () => {
         const fname = `NeuralNetwork-${funcSelect.value}-${layers.slice(1, -1).join("_")}${shiftingInp.checked ? "-sh" : ""}-lr_${learnRateInp.valueAsNumber}.png`;
         Lib.canvas.saveAsPng(canvas, fname);
         log(`Canvas image saved as ${fname}`);
     }));
-    visualizerDiv.prepend(Lib.Button([], "Draw high quality", async () => {
+    visualizerDiv.prepend(Lib.Button([], TText("Draw high quality", "Отрисовка в высоком качестве"), async () => {
         if (running)
             onStartBtn();
         log("Start high quality drawing");
@@ -288,12 +370,13 @@ export function start() {
         log("End high quality drawing");
     }));
     drawAll();
+    let lastSelectTime = Date.now();
     canvas.addEventListener("click", e => {
         const x = e.offsetX;
         const y = e.offsetY;
         for (let i = 0; i < points.length; i++) {
             const point = points[i];
-            if (s(x - point.x * canvas.width) + s(y - point.y * canvas.height) <= s(pointSize)) {
+            if (s(x - point.x * canvas.width) + s(y - point.y * canvas.height) <= s(pointSize * 2)) {
                 if (e.ctrlKey) {
                     if (point.color == "red")
                         point.color = "green";
@@ -303,18 +386,26 @@ export function start() {
                         point.color = "red";
                 }
                 else {
-                    activePoint = point;
+                    const now = Date.now();
+                    if (activePoint == point && now - lastSelectTime < 200) {
+                        points.splice(i, 1);
+                        activePoint = points[0];
+                    }
+                    else {
+                        activePoint = point;
+                    }
+                    lastSelectTime = now;
                     drawNetwork();
                 }
                 redrawPoints();
                 return;
             }
         }
-        let color = "red";
+        let color = ["red", "green", "blue"][parseInt(colorSelect.value) - 1];
         if (e.shiftKey)
-            color = "green";
+            color = color == "green" ? "red" : "green";
         else if (e.altKey)
-            color = "blue";
+            color = color == "blue" ? "red" : "blue";
         points.push({ x: x / canvas.width, y: y / canvas.height, color, d: Math.random() * Math.PI * 2 });
         if (points.length == 1) {
             activePoint = points[0];
@@ -328,7 +419,7 @@ export function start() {
         const y = e.offsetY;
         for (let i = 0; i < points.length; i++) {
             const point = points[i];
-            if (s(x - point.x * canvas.width) + s(y - point.y * canvas.height) <= s(pointSize)) {
+            if (s(x - point.x * canvas.width) + s(y - point.y * canvas.height) <= s(pointSize * 2)) {
                 points.splice(i, 1);
                 if (point == activePoint)
                     activePoint = points[0];
@@ -360,7 +451,7 @@ export function start() {
     function drawPoints() {
         for (let i = 0; i < points.length; i++) {
             const point = points[i];
-            ctx.fillStyle = point.color;
+            ctx.fillStyle = colors[point.color];
             ctx.strokeStyle = point == activePoint ? "lime" : "black";
             ctx.beginPath();
             ctx.arc(point.x * canvas.width, point.y * canvas.height, pointSize, 0, Math.PI * 2);
@@ -368,6 +459,12 @@ export function start() {
             ctx.beginPath();
             ctx.arc(point.x * canvas.width, point.y * canvas.height, pointSize, 0, Math.PI * 2);
             ctx.stroke();
+            if (point == activePoint) {
+                ctx.strokeStyle = "blue";
+                ctx.beginPath();
+                ctx.arc(point.x * canvas.width, point.y * canvas.height, pointSize + 1, 0, Math.PI * 2);
+                ctx.stroke();
+            }
         }
     }
     async function drawBack(hq = false) {
@@ -433,9 +530,13 @@ export function start() {
                 point.x = Math.max(0, Math.min(point.x, 1));
                 point.y = Math.max(0, Math.min(point.y, 1));
             }
-            const r1 = point.color == "red" ? 1 : 0;
-            const r2 = point.color == "green" ? 1 : 0;
-            const r3 = point.color == "blue" ? 1 : 0;
+            // const r1 = point.color == "red" ? 1 : 0;
+            // const r2 = point.color == "green" ? 1 : 0;
+            // const r3 = point.color == "blue" ? 1 : 0;
+            const c = colors[point.color];
+            const r1 = parseInt(c.slice(1, 3), 16) / 255;
+            const r2 = parseInt(c.slice(3, 5), 16) / 255;
+            const r3 = parseInt(c.slice(5, 7), 16) / 255;
             try {
                 const ans = [r1, r2, r3];
                 const { e, r } = network.train([point.x, point.y], ans);
@@ -498,7 +599,10 @@ export function start() {
     }
     function addButton(text, parent, onclick) {
         const button = document.createElement("button");
-        button.innerText = text;
+        if (typeof text == "string")
+            button.innerText = text;
+        else
+            button.appendChild(text);
         button.addEventListener("click", onclick.bind(button, button));
         parent.appendChild(button);
         return button;
@@ -507,8 +611,8 @@ export function start() {
         const select = document.createElement("select");
         for (const option of options) {
             const el = document.createElement("option");
-            el.value = option;
-            el.innerText = option;
+            el.value = option[0];
+            el.appendChild(TText(option[0], option[1]));
             select.appendChild(el);
         }
         return select;
@@ -522,6 +626,23 @@ export function start() {
     function setLoader(v) {
         loader.style.setProperty("--v", `${v}`);
     }
+    function updateLang() {
+        Lib.setLang(!Lib.langEn);
+        changeLang.innerText = Lib.langEn ? "En" : "Ru";
+        changeLang.href = Lib.langEn ? "?lang=ru" : "?lang=en";
+        const url = new URL(location.href);
+        if (Lib.langEn)
+            url.searchParams.delete("lang");
+        else
+            url.searchParams.set("lang", "ru");
+        history.replaceState(undefined, "", url);
+    }
+    Lib.setLang(new URL(location.href).searchParams.get("lang") == "ru");
+    updateLang();
+    changeLang.addEventListener("click", e => {
+        e.preventDefault();
+        updateLang();
+    });
     points = JSON.parse(JSON.stringify(preset_lines));
     log(`Points preset [${presetSelect.value}] loaded!`);
     loadModel(JSON.parse(JSON.stringify(presets_model.lines)));
