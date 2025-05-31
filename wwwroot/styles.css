@@ -92,6 +92,9 @@ a {
 	padding-inline: 0.2em;
 	font-size: 0.8em;
 }
+.container-outlined ~ .container-outlined {
+	margin-top: 1.2em;
+}
 .desc {
 	padding: 0.8em;
 	font-size: 0.8em;
@@ -177,6 +180,10 @@ input[type="checkbox"]::before {
 }
 input[type="checkbox"]:checked::before {
 	transform: scale(1) rotate(45deg);
+}
+
+input[type="color"] {
+	padding: 0;
 }
 
 .lbl-chbx {

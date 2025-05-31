@@ -8,6 +8,11 @@ import { draw, setVisualizerVisible } from "./visualizer.js";
 const pixelSize = 16;
 const pointSize = 7;
 const movePoints = false;
+const colors = {
+	"red": localStorage.getItem("network_ariaMarker-pointsColors_1") || "#ff0000",
+	"green": localStorage.getItem("network_ariaMarker-pointsColors_2") || "#00ff00",
+	"blue": localStorage.getItem("network_ariaMarker-pointsColors_3") || "#0000ff",
+}
 
 export function start()
 {
@@ -20,12 +25,17 @@ export function start()
 	const errorSpan = Lib.Span("text-error");
 	const trainSpan = Lib.Span("text-normal");
 	const speedSpan = Lib.Span();
+	const pointsDiv = Lib.Div(["padding", "container", "container-outlined"]);
+	const colorInput1 = Lib.Input("", "color");
+	const colorInput2 = Lib.Input("", "color");
+	const colorInput3 = Lib.Input("", "color");
 	const saveDiv = Lib.Div(["padding", "container", "container-outlined"]);
 	const slotPInp = Lib.Input("inp-short", "text");
 	const presetDiv = Lib.Div(["padding", "container", "container-outlined"]);
 	const presetSelect = createSelect([["lines", "линии"], ["waves", "волны"], ["zones", "зоны"], ["circles", "круги"]]);
 	const settingsDiv = Lib.Div(["padding", "container"]);
 	const funcSelect = createSelect([["sigmoid", "сигмоида"], ["relu", "relu"], ["tanh", "tanh"], ["linear", "линейная"]]);
+	const colorSelect = createSelect([["1", "1"], ["2", "2"], ["3", "3"]]);
 	const layersInp = Lib.Input([], "text");
 	const learnRateInp = Lib.Input([], "number");
 	const shiftingInp = Lib.Input([], "checkbox");
@@ -41,10 +51,15 @@ export function start()
 	canvasDiv.style.overflow = "hidden";
 	body?.appendChild(canvasDiv);
 	canvasDiv.appendChild(canvas);
-	body?.appendChild(Lib.Div("desc", [TText(
-		"LMB - add point, shift - green point, alt - blue point; RMB - remove point; space - start/stop",
-		"ЛКМ - поставтить точку, shift - зелёные точки, alt - синие точки; ПКМ - удалить точку; пробел - старт/стоп")]));
+	body?.appendChild(Lib.Div(["container", "desc"], [
+		TText("LMB - add point; ", "ЛКМ - поставтить точку; "),
+		TText("shift - use color 2; ", "shift - испл. цвет 2; "),
+		TText("alt - use color 3; ", "alt - испл. цвет 3; "),
+		TText("RMB or Double tap - remove point; ", "ПКМ или Двойное нажатие - удалить точку; "),
+		TText("space - start/stop", "пробел - старт/стоп"),
+	]));
 	body?.appendChild(controlsDiv);
+	body?.appendChild(pointsDiv);
 	body?.appendChild(saveDiv);
 	body?.appendChild(settingsDiv);
 	body?.appendChild(statsDiv);
@@ -81,10 +96,18 @@ export function start()
 			e.preventDefault();
 			onStartBtn();
 		}
+		else if (e.code == "ArrowUp" && e.ctrlKey)
+		{
+			changeInpLr(2);
+		}
+		else if (e.code == "ArrowDown" && e.ctrlKey)
+		{
+			changeInpLr(0.5);
+		}
 	})
 	window.addEventListener("scroll", e =>
 	{
-		if (window.scrollY > 200)
+		if (window.scrollY > 300)
 		{
 			const p = scrollDown.parentElement;
 			if (p) p.removeChild(scrollDown);
@@ -118,6 +141,48 @@ export function start()
 	controlsDiv.appendChild(errorSpan);
 	controlsDiv.appendChild(trainSpan);
 	controlsDiv.appendChild(speedSpan);
+
+	colorInput1.value = colors.red;
+	colorInput2.value = colors.green;
+	colorInput3.value = colors.blue;
+	colorInput1.addEventListener("input", () => { colors.red = colorInput1.value; saveColors(); });
+	colorInput2.addEventListener("input", () => { colors.green = colorInput2.value; saveColors(); });
+	colorInput3.addEventListener("input", () => { colors.blue = colorInput3.value; saveColors(); });
+	pointsDiv.appendChild(Lib.Span("container-outlined-lbl", [TText("Points", "Точки")]));
+	pointsDiv.appendChild(Lib.Span("container", [
+		TText("Color 1:", "Цвет 1:"),
+		colorInput1,
+	]));
+	pointsDiv.appendChild(Lib.Span("container", [
+		TText("Color 2:", "Цвет 2:"),
+		colorInput2,
+	]));
+	pointsDiv.appendChild(Lib.Span("container", [
+		TText("Color 3:", "Цвет 3:"),
+		colorInput3,
+	]));
+	addButton(TText("Reset", "Сбросить"), pointsDiv, () =>
+	{
+		colors.red = "#ff0000";
+		colors.green = "#00ff00";
+		colors.blue = "#0000ff";
+		colorInput1.value = colors.red;
+		colorInput2.value = colors.green;
+		colorInput3.value = colors.blue;
+		saveColors();
+		drawAll();
+	});
+	function saveColors()
+	{
+		localStorage.setItem("network_ariaMarker-pointsColors_1", colors.red);
+		localStorage.setItem("network_ariaMarker-pointsColors_2", colors.green);
+		localStorage.setItem("network_ariaMarker-pointsColors_3", colors.blue);
+	}
+	pointsDiv.appendChild(Lib.Span("container", [
+		TText("Color of new:", "Цвет новых:"),
+		colorSelect,
+		TText("(if no keyboard)", "(если нет клавиатуры)"),
+	]));
 
 	saveDiv.appendChild(Lib.Span("container-outlined-lbl", [TText("Save values", "Сохранить значения")]));
 	const savePointsDiv = Lib.Div("container");
@@ -256,7 +321,8 @@ export function start()
 			learnRateInp,
 			Lib.Button([], "×2", () => changeInpLr(2)),
 			Lib.Button([], "÷2", () => changeInpLr(0.5)),
-		])
+		]),
+		Lib.Span([], [], "(ctrl+up/down)"),
 	]));
 	function changeInpLr(m: number)
 	{
@@ -345,6 +411,7 @@ export function start()
 
 	drawAll();
 
+	let lastSelectTime = Date.now();
 	canvas.addEventListener("click", e =>
 	{
 		const x = e.offsetX;
@@ -352,7 +419,7 @@ export function start()
 		for (let i = 0; i < points.length; i++)
 		{
 			const point = points[i];
-			if (s(x - point.x * canvas.width) + s(y - point.y * canvas.height) <= s(pointSize))
+			if (s(x - point.x * canvas.width) + s(y - point.y * canvas.height) <= s(pointSize * 2))
 			{
 				if (e.ctrlKey)
 				{
@@ -362,16 +429,26 @@ export function start()
 				}
 				else
 				{
-					activePoint = point;
+					const now = Date.now();
+					if (activePoint == point && now - lastSelectTime < 200)
+					{
+						points.splice(i, 1);
+						activePoint = points[0];
+					}
+					else
+					{
+						activePoint = point;
+					}
+					lastSelectTime = now;
 					drawNetwork();
 				}
 				redrawPoints();
 				return;
 			}
 		}
-		let color: "red" | "blue" | "green" = "red"
-		if (e.shiftKey) color = "green";
-		else if (e.altKey) color = "blue";
+		let color = ["red", "green", "blue"][parseInt(colorSelect.value) - 1] as "red" | "blue" | "green";
+		if (e.shiftKey) color = color == "green" ? "red" : "green";
+		else if (e.altKey) color = color == "blue" ? "red" : "blue";
 		points.push({ x: x / canvas.width, y: y / canvas.height, color, d: Math.random() * Math.PI * 2 });
 		if (points.length == 1)
 		{
@@ -388,7 +465,7 @@ export function start()
 		for (let i = 0; i < points.length; i++)
 		{
 			const point = points[i];
-			if (s(x - point.x * canvas.width) + s(y - point.y * canvas.height) <= s(pointSize))
+			if (s(x - point.x * canvas.width) + s(y - point.y * canvas.height) <= s(pointSize * 2))
 			{
 				points.splice(i, 1);
 				if (point == activePoint) activePoint = points[0];
@@ -423,7 +500,7 @@ export function start()
 		for (let i = 0; i < points.length; i++)
 		{
 			const point = points[i];
-			ctx.fillStyle = point.color;
+			ctx.fillStyle = colors[point.color];
 			ctx.strokeStyle = point == activePoint ? "lime" : "black";
 			ctx.beginPath();
 			ctx.arc(point.x * canvas.width, point.y * canvas.height, pointSize, 0, Math.PI * 2);
@@ -431,6 +508,13 @@ export function start()
 			ctx.beginPath();
 			ctx.arc(point.x * canvas.width, point.y * canvas.height, pointSize, 0, Math.PI * 2);
 			ctx.stroke();
+			if (point == activePoint)
+			{
+				ctx.strokeStyle = "blue";
+				ctx.beginPath();
+				ctx.arc(point.x * canvas.width, point.y * canvas.height, pointSize + 1, 0, Math.PI * 2);
+				ctx.stroke();
+			}
 		}
 	}
 	async function drawBack(hq = false)
@@ -504,9 +588,13 @@ export function start()
 				point.x = Math.max(0, Math.min(point.x, 1));
 				point.y = Math.max(0, Math.min(point.y, 1));
 			}
-			const r1 = point.color == "red" ? 1 : 0;
-			const r2 = point.color == "green" ? 1 : 0;
-			const r3 = point.color == "blue" ? 1 : 0;
+			// const r1 = point.color == "red" ? 1 : 0;
+			// const r2 = point.color == "green" ? 1 : 0;
+			// const r3 = point.color == "blue" ? 1 : 0;
+			const c = colors[point.color];
+			const r1 = parseInt(c.slice(1, 3), 16) / 255;
+			const r2 = parseInt(c.slice(3, 5), 16) / 255;
+			const r3 = parseInt(c.slice(5, 7), 16) / 255;
 			try
 			{
 				const ans = [r1, r2, r3];
