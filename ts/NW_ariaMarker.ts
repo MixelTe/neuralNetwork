@@ -56,7 +56,7 @@ export function start()
 		TText("shift - use color 2; ", "shift - испл. цвет 2; "),
 		TText("alt - use color 3; ", "alt - испл. цвет 3; "),
 		TText("RMB or Double tap - remove point; ", "ПКМ или Двойное нажатие - удалить точку; "),
-		TText("space - start/stop", "пробел - старт/стоп"),
+		TText("ctrl+space - start/stop", "ctrl+пробел - старт/стоп"),
 	]));
 	body?.appendChild(controlsDiv);
 	body?.appendChild(pointsDiv);
@@ -91,7 +91,7 @@ export function start()
 	const startBtn = addButton("Start", controlsDiv, onStartBtn);
 	window.addEventListener("keydown", e =>
 	{
-		if (e.code == "Space")
+		if (e.code == "Space" && e.ctrlKey)
 		{
 			e.preventDefault();
 			onStartBtn();
